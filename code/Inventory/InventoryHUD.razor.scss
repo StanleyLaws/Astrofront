@@ -1,0 +1,273 @@
+.invquick-root {
+  position: absolute;
+  left: 50%;
+  bottom: 70px;
+  transform: translateX(-50%);
+  z-index: 5000;
+
+  pointer-events: none;
+
+  /* fade global */
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.invquick-root.visible {
+  opacity: 1;
+}
+
+.invquick-root.hidden {
+  opacity: 0;
+}
+
+.invquick-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.invquick-slot {
+  width: 92px;
+  height: 92px;
+
+  margin: 0 10px;
+
+  border-radius: 14px;
+  background-color: rgba(10, 10, 16, 0.30);
+  border: 2px solid rgba(255, 255, 255, 0.10);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  position: relative;
+
+  transition: opacity 0.16s ease, transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.invquick-slot.empty {
+  opacity: 0.35;
+}
+
+/* Selected : jaune OK */
+.invquick-slot.selected {
+  transform: translateY(-6px);
+  background-color: rgba(20, 20, 30, 0.55);
+  border-color: rgba(255, 200, 80, 0.85);
+  opacity: 1.0;
+}
+
+/* Recent : petit lift MAIS PAS JAUNE */
+.invquick-slot.recent {}
+
+.slot-icon {
+  width: 100px;
+  height: 100px;
+  
+  margin-top: -10px;
+  margin-left: 4px;
+
+  /* plus de cadre */
+  background-color: transparent;
+  border-radius: 0;
+
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+
+  opacity: 0.95;
+}
+
+/* Par défaut : icônes un peu atténuées */
+.invquick-slot .slot-icon {
+  opacity: 0.65;
+  filter: blur(0.35px);
+}
+
+/* Icône nette et pleine sur le slot sélectionné */
+.invquick-slot.selected .slot-icon {
+  opacity: 1.0;
+  filter: blur(0);
+}
+
+
+/* Nom: centre strictement au centre du slot */
+/* Nom sous la case (en dehors), centré parfaitement */
+.slot-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+
+  top: 100%;            /* juste sous le slot */
+  margin-top: 6px;      /* espace sous la case */
+
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  color: rgba(255, 255, 255, 0.90);
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+/* visible uniquement sur selected */
+.invquick-slot.selected .slot-name {
+  opacity: 1;
+}
+
+
+.invquick-slot.selected .slot-name {
+  opacity: 1;
+}
+
+
+/* visible uniquement sur selected */
+.invquick-slot.selected .slot-name {
+  opacity: 1;
+}
+
+/* petit compteur stack (haut gauche) */
+.slot-stack {
+  position: absolute;
+  top: 6px;
+  left: 10px;
+
+  font-size: 14px;      /* plus gros */
+  font-weight: 800;
+  letter-spacing: 0.04em;
+
+  color: rgba(140, 220, 255, 0.95);
+  text-shadow: 0 0 6px rgba(0, 120, 200, 0.6);
+
+  pointer-events: none;
+
+  transform: scale(0.96);
+  opacity: 0.92;
+  transition: transform 0.14s ease, opacity 0.14s ease;
+}
+
+/* petit "pop" sur le slot sélectionné */
+.invquick-slot.selected .slot-stack {
+  transform: scale(1.10);
+  opacity: 1;
+}
+
+
+
+
+
+/* le nom apparaît uniquement sur le slot actif */
+.invquick-slot.selected .slot-name {
+  opacity: 1;
+}
+
+
+
+/* index en bas au centre */
+.slot-index {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+
+  font-size: 13px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.80);
+}
+ 
+
+/* Icônes par type */
+.type-hands .slot-icon   { background-image: url("/ui/icons/hands.png"); }
+.type-stellium .slot-icon{ background-image: url("/ui/icons/stellium.png"); }
+.type-plasma .slot-icon  { background-image: url("/ui/icons/plasma.png"); }
+.type-alloy .slot-icon   { background-image: url("/ui/icons/alloy.png"); }
+.type-generic .slot-icon { background-image: url("/ui/icons/item.png"); }
+.type-empty .slot-icon   { background-image: url("/ui/icons/empty.png"); opacity: 0.25; }
+
+
+
+/* ====== WEIGHT BAR (verticale au-dessus du HUD) ====== */
+.invquick-weight {
+  position: absolute;
+  left: 50%;
+  bottom: -50px;              /* sous l’inventaire (ajuste) */
+  transform: translateX(-50%);
+
+  pointer-events: none;
+
+  display: flex;
+  flex-direction: row;        /* barre + texte côte à côte */
+  align-items: center;
+  justify-content: center;
+
+  opacity: 0.95;
+}
+
+
+
+/* Piste */
+.weight-track {
+  position: relative;
+
+  width: 8px;                 /* plus fin */
+  height: 64px;               /* plus haut */
+
+  border-radius: 999px;
+  background-color: rgba(10, 10, 16, 0.30);
+  border: 2px solid rgba(255, 255, 255, 0.16);
+
+  overflow: hidden;
+}
+
+
+.weight-fill {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+
+  /* Bleu plus profond, moins "néon" */
+  background-color: rgba(90, 150, 255, 0.95);
+
+  /* Glow plus subtil */
+  box-shadow: 0 0 8px rgba(90, 150, 255, 0.35);
+
+  transition: height 0.12s ease;
+}
+
+
+
+
+.weight-text {
+
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+
+  /* Texte bleu clair, lisible et cohérent avec la barre */
+  color: rgba(160, 210, 255, 0.95);
+
+  /* Léger glow doux (pas gris) */
+  text-shadow: 0 0 6px rgba(90, 150, 255, 0.35);
+
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+
+
+
+
+

@@ -1,0 +1,35 @@
+@using Sandbox
+@namespace Astrofront
+@inherits PanelComponent
+
+<root class="wp-root">
+  <div class="wp-container">
+    @if (_show)
+    {
+      <div class="wp-text">"USE" for collect</div>
+    }
+  </div>
+</root>
+
+@code {
+  private DispenserUse _use;
+  private bool _show;
+
+  protected override void OnStart()
+  {
+    var myPos = Transform?.World.Position ?? Vector3.Zero;
+    _use = Scene?.GetAllComponents<DispenserUse>()?
+             .OrderBy(d => d.Transform.World.Position.Distance(myPos))
+             .FirstOrDefault();
+  }
+
+  protected override void OnUpdate()
+  {
+    var inRange = _use != null && _use.Enabled && _use.IsLocalInRange;
+    if ( inRange != _show )
+    {
+      _show = inRange;
+      StateHasChanged();
+    }
+  }
+}

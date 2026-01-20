@@ -1,0 +1,159 @@
+.paneltest-root {
+    position: absolute;
+
+    right: 60px;
+    top: 320px;
+
+    width: 620px;
+    min-height: 440px;
+
+    background-color: rgba(10, 10, 16, 0.88);
+
+    border-radius: 12px;
+    border: 2px solid rgba(120, 180, 255, 0.75);
+
+    box-shadow: 0 12px 24px #000000;
+
+    padding: 20px 22px 22px 22px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+
+    pointer-events: all;
+}
+
+
+
+/* HEADER */
+.paneltest-header {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+
+    height: 40px;
+    margin-bottom: 8px;
+}
+
+/* CONTENEUR : page + boutons sur une même ligne */
+.pager-controls {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+/* Indicateur de page à côté des boutons */
+.page-indicator {
+    margin-right: 12px;
+
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+
+    /* Même couleur que le texte des boutons */
+    color: rgba(255, 255, 255, 0.90);
+
+    display: flex;
+    align-items: center;
+}
+
+
+
+
+
+.paneltest-title {
+    font-size: 24px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    text-align: center;
+
+    color: #ffffff;
+}
+
+/* zone pagination (juste les boutons) */
+.paneltest-subheader {
+    width: 560px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+
+    margin-bottom: 10px;
+}
+
+.paneltest-pager {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.pager-buttons {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+/* boutons */
+.page-btn {
+    min-width: 80px;          /* un peu plus large pour éviter la coupe */
+    padding: 8px 12px;
+
+    border-radius: 10px;
+    background-color: rgba(40, 40, 52, 0.70);
+    border: 2px solid rgba(120, 180, 255, 0.25);
+
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.10em;   /* légèrement réduit pour éviter la coupe */
+    text-transform: uppercase;
+
+    color: rgba(255, 255, 255, 0.90);
+
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.45);
+
+    /* === CENTRAGE PROPRE (compatible s&box) === */
+    display: flex;
+    align-items: center;     /* centre verticalement */
+    justify-content: center; /* centre horizontalement */
+    text-align: center;
+}
+
+
+
+.page-btn:hover {
+    border-color: rgba(255, 220, 120, 0.90);
+    background-color: rgba(56, 56, 80, 0.85);
+}
+
+.page-btn.disabled {
+    opacity: 0.30;
+}
+
+/* grille */
+.grid-4x4 {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+
+    width: 560px;
+    height: 400px;
+
+    background-color: rgba(25, 25, 38, 0.85);
+    border-radius: 10px;
+    border: 1px solid rgba(80, 100, 150, 0.6);
+
+    padding: 8px;
+
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+
+

@@ -1,0 +1,243 @@
+@using Sandbox
+@using Sandbox.UI
+@namespace Astrofront
+@inherits PanelComponent
+
+<root>
+  <div class="output">
+    @foreach (var m in Messages)
+    {
+      if (m.TimeSince < 10f || ChatOpen)
+      {
+        <div class="chat_entry">
+          <div class="message @(m.Author == "SYSTEM" ? "system" : null)">
+            @if (m.Author == "SYSTEM")
+            {
+              <div class="author">ℹ️</div>@m.Text
+            }
+            else
+            {
+              @{
+    var isSelf = IsSelf(m);
+
+    // Découper "[ADMIN] Victarrow" -> rank="ADMIN", name="Victarrow"
+    string rank = null;
+    string name = m.Author ?? "Player";
+    if (!string.IsNullOrWhiteSpace(m.Author) && m.Author.StartsWith("["))
+    {
+        var close = m.Author.IndexOf(']');
+        if (close > 0 && close + 1 < m.Author.Length)
+        {
+            rank = m.Author.Substring(1, close - 1);           // ADMIN / MODERATOR / VIP / Joueur
+            name = m.Author.Substring(close + 1).TrimStart();  // Victarrow
+        }
+    }
+
+    var rankClass = rank switch
+    {
+        "ADMIN"      => "rank-admin",
+        "MODERATOR"  => "rank-moderator",
+        "VIP"        => "rank-vip",
+        _            => "rank-player" // Joueur par défaut
+    };
+}
+
+<span class="author @(isSelf ? "self" : null) @rankClass">
+  @if (rank is not null)
+  {
+      <span class="tag">[@rank]</span>
+  }
+  @name
+</span>
+<span class="text">@m.Text</span>
+
+
+
+			}
+          </div>
+        </div>
+      }
+    }
+  </div>
+
+  <div class="input-container">
+    <div class="input">
+      <TextEntry style="width:100%;"
+                 MaxLength=@(125)
+                 @ref="InputBox"
+                 onchange="@OnChange"
+                 onsubmit="@OnSubmit">
+      </TextEntry>
+    </div>
+  </div>
+</root>
+
+@code {
+  // ---------- Instance globale pour que ChatSystem puisse appeler AddMessage(...) ----------
+  public static Chat Instance { get; private set; }
+
+  // ---------- Modèle et état ----------
+  private record Entry(SteamId SteamId, string Author, string Text, Color Color)
+  {
+    public RealTimeSince TimeSince = 0.0f;
+  }
+
+  private TextEntry InputBox;
+  private bool ChatOpen = false;
+  private List<Entry> Messages = new();
+
+  protected override void OnStart()
+  {
+    Instance = this;
+  }
+
+  protected override void OnUpdate()
+  {
+    // Si le chat est ouvert, intercepter Échap avant le menu s&box
+    if ( ChatOpen && Input.EscapePressed )
+    {
+      ToggleChat( false );
+      Input.EscapePressed = false; // bloque le menu s&box pour cette frame
+      return;
+    }
+
+    if ( InputBox is null )
+      return;
+
+    // Ouvrir (action "chat" bindée sur T)
+    if ( Input.Pressed( "chat" ) )
+    {
+      ToggleChat( true );
+      return;
+    }
+
+    // Rafraîchir quand des messages dépassent 10s (si fermé)
+    if ( !ChatOpen && Messages.Any( e => e.TimeSince > 10f ) )
+      StateHasChanged();
+  }
+
+  void ToggleChat( bool open )
+  {
+    ChatOpen = open;
+    SetClass( "open", open );
+
+    if ( open )
+    {
+      InputBox.Focus();
+      InputBox.Placeholder = "Écris un message…";
+    }
+    else
+    {
+      // fermer : rendre le focus + vider
+      InputBox.Blur();
+      InputBox.Text = "";
+      InputBox.Placeholder = "";
+    }
+
+    StateHasChanged();
+  }
+
+  void OnChange()
+  {
+    // (commandes / suggestions : plus tard)
+  }
+
+  void OnSubmit()
+  {
+    // 1) récupérer le texte avant fermeture
+    var text = InputBox.Text?.Trim() ?? "";
+
+    // 2) vider tout de suite (si l’envoi échoue, on ne garde pas)
+    InputBox.Text = "";
+
+    // 3) si vide -> juste fermer
+    if ( string.IsNullOrWhiteSpace( text ) )
+    {
+      ToggleChat( false );
+      return;
+    }
+
+    // 4) envoyer (réseau -> ChatSystem)
+    ChatSystem.SendMessageHost( text );
+
+    // 5) fermer
+    ToggleChat( false );
+  }
+
+  // ---------- API appelée par ChatSystem.cs ----------
+  public void AddMessage( SteamId steamId, string author, string text, Color color )
+  {
+    if ( Messages.Count > 50 )
+      Messages.RemoveAt( 0 );
+
+    Messages.Add( new Entry( steamId, author, text, color ) );
+    StateHasChanged();
+  }
+
+  public void AddSystemMessage( string text )
+  {
+    if ( Messages.Count > 50 )
+      Messages.RemoveAt( 0 );
+
+    Messages.Add( new Entry( default, "SYSTEM", text, Color.Gray ) );
+    StateHasChanged();
+  }
+
+  // détecte le joueur local par SteamId (fiable)
+  private static bool IsSelf( Entry e ) => e.SteamId == (Connection.Local?.SteamId ?? default);
+  
+  
+  
+  // Rend l'auteur sous forme: [TAG coloré] Pseudo
+RenderFragment RenderAuthor(Entry m, bool isSelf) => builder =>
+{
+    var seq = 0;
+
+    // Découper "[ADMIN] Victarrow" -> tag="[ADMIN]", name="Victarrow"
+    string tag = null;
+    string name = m.Author ?? "Player";
+    if (!string.IsNullOrWhiteSpace(m.Author) && m.Author.StartsWith("["))
+    {
+        var close = m.Author.IndexOf(']');
+        if (close > 0 && close + 1 < m.Author.Length)
+        {
+            tag  = m.Author.Substring(0, close + 1);
+            name = m.Author.Substring(close + 1).TrimStart();
+        }
+    }
+
+    // Mapper tag -> couleur voulue
+    string color = null;
+    if (tag != null)
+    {
+        var t = tag.ToUpperInvariant();
+        if      (t.StartsWith("[ADMIN]"))     color = "red";
+        else if (t.StartsWith("[MODERATOR]")) color = "blue";
+        else if (t.StartsWith("[VIP]"))       color = "orange";
+        else                                   color = "green"; // Joueur
+    }
+
+    // TAG coloré (si présent)
+    if (tag != null)
+    {
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "chat-tag");
+        builder.AddAttribute(seq++, "style", $"color:{color}; font-weight:600; margin-right:6px;");
+        builder.AddContent(seq++, tag);
+        builder.CloseElement();
+    }
+
+    // PSEUDO (sans couleur, avec la classe 'self' si c'est toi)
+    builder.OpenElement(seq++, "span");
+    builder.AddAttribute(seq++, "class", $"author{(isSelf ? " self" : "")}");
+    builder.AddContent(seq++, name);
+    builder.CloseElement();
+};
+
+  
+  
+  
+  
+  
+  
+}

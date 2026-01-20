@@ -1,0 +1,9 @@
+peux-tu me faire un recap de tout ce qu'on a ajouté au projet initial que je t'ai 
+proposé ( en rappelant le projet initial, le contexte, tout.... ). 
+Pour que je lance un nouveau chatgpt ( pour éviter d'emcombrer cette conversation plus loin ) détaillé, en rappelant ce 
+qu'il y avait à la base ( le contexte, les technologies utilisées ), ce qu'on a ajouté, les technologies utilisées ect ect... ).
+
+Tu vas évidemment avoir besoin des codes que j'ai déjà fait pour les modifier, 
+donc je te laisse me demander ce que tu as besoin pour continuer.
+
+je t'envoie également l'API de s&box à jour au format .json et la doc s&box : https://sbox.game/dev/doc

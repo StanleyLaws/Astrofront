@@ -1,0 +1,134 @@
+@namespace Astrofront
+@using Sandbox
+@using Sandbox.UI
+@inherits Panel
+
+<root class="invman-slot @(Locked ? "locked" : "") @(HasItem ? "has-item" : "empty") @ItemTypeClass @(IsHovered ? "hover" : "")"
+      onmouseover="@(Locked ? null : OnHoverEnter)"
+      onmouseout="@(Locked ? null : OnHoverLeave)">
+
+    <div class="slot-icon"></div>
+
+    @if ( !Locked && HasItem && Amount > 0 )
+    {
+        <div class="slot-stack">@($"x{Amount}")</div>
+    }
+
+</root>
+
+@code {
+    // ----- données du slot -----
+    public int SlotIndex { get; set; }
+
+    // ✅ ON GARDE ItemName même si on ne l’affiche plus (pour éviter l’erreur)
+    public string ItemName { get; set; } = "";
+
+    public int Amount { get; set; }
+    public bool HasItem { get; set; }
+
+    // ✅ Slot verrouillé (Hands)
+    public bool Locked { get; set; } = false;
+
+    // ✅ Type pour l’icône (renommé pour éviter collision)
+    public ResourceType ItemType { get; set; }
+
+    public bool IsHovered { get; set; }
+
+    private string ItemTypeClass => Locked ? "type-hands" : (HasItem ? ItemType switch
+    {
+        ResourceType.Stellium => "type-stellium",
+        ResourceType.Plasma   => "type-plasma",
+        ResourceType.Alloy    => "type-alloy",
+        _                     => "type-generic"
+    } : "type-empty");
+
+    // ----- état partagé entre tous les InventoryManageSlot -----
+    private static int? DragOriginIndex;
+    private static InventoryManageSlot CurrentHoverSlot;
+    private static Vector2 _pressPos;
+    private static RealTimeSince _sincePress;
+
+    private void OnHoverEnter()
+    {
+        IsHovered = true;
+        CurrentHoverSlot = this;
+        StateHasChanged();
+    }
+
+    private void OnHoverLeave()
+    {
+        IsHovered = false;
+        if ( CurrentHoverSlot == this )
+            CurrentHoverSlot = null;
+
+        StateHasChanged();
+    }
+
+    protected override void OnMouseDown( MousePanelEvent e )
+    {
+        base.OnMouseDown( e );
+
+        if ( Locked ) return;
+
+        if ( e.Button != "mouseleft" && e.Button != "mouseright" )
+            return;
+
+        _pressPos   = Mouse.Position;
+        _sincePress = 0;
+
+        // Préparer drag seulement en PA et si on a un item
+        if ( e.Button == "mouseleft" && HasItem )
+        {
+            DragOriginIndex = SlotIndex;
+        }
+    }
+
+    protected override void OnMouseUp( MousePanelEvent e )
+    {
+        base.OnMouseUp( e );
+
+        if ( Locked ) return;
+
+        var btn = e.Button;
+        if ( btn != "mouseleft" && btn != "mouseright" )
+            return;
+
+        var target = CurrentHoverSlot ?? this;
+        var logicalIndex = target.SlotIndex;
+
+        var dist    = (Mouse.Position - _pressPos).Length;
+        var isClick = dist < 5f && _sincePress < 0.4f;
+
+        // ======== SA → clic logique ========
+        if ( btn == "mouseright" )
+        {
+            InventoryManagePanel.Instance?.OnSlotSecondaryClick( logicalIndex );
+            DragOriginIndex = null;
+            return;
+        }
+
+        // ======== PA → clic ou drag ========
+        if ( btn == "mouseleft" )
+        {
+            if ( isClick )
+            {
+                InventoryManagePanel.Instance?.OnSlotPrimaryClick( logicalIndex );
+                DragOriginIndex = null;
+                return;
+            }
+
+            if ( DragOriginIndex.HasValue )
+            {
+                var from = DragOriginIndex.Value;
+                var to   = logicalIndex;
+
+                if ( from != to )
+                {
+                    InventoryManagePanel.Instance?.OnDragDrop( from, to );
+                }
+            }
+
+            DragOriginIndex = null;
+        }
+    }
+}

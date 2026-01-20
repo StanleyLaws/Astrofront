@@ -1,0 +1,71 @@
+@namespace Astrofront
+@using Sandbox
+@using Sandbox.UI
+@attribute [StyleSheet]
+@inherits PanelComponent
+
+<div class="heldcursor-root">
+    <div class="heldcursor-slot @TypeClass">
+        <div class="slot-icon"></div>
+        <div class="slot-stack">@AmountLabel</div>
+    </div>
+</div>
+
+@code
+{
+    private int HeldAmount => UiDragContext.HeldAmount;
+
+    private string AmountLabel => HeldAmount > 0 ? $"x{HeldAmount}" : "";
+
+    private string TypeClass
+    {
+        get
+        {
+            if ( !UiDragContext.HeldType.HasValue )
+                return "type-empty";
+
+            return UiDragContext.HeldType.Value switch
+            {
+                ResourceType.Stellium => "type-stellium",
+                ResourceType.Plasma   => "type-plasma",
+                ResourceType.Alloy    => "type-alloy",
+                _                     => "type-generic"
+            };
+        }
+    }
+
+    protected override void OnUpdate()
+    {
+        base.OnUpdate();
+
+        if ( Panel == null )
+            return;
+
+        // Rien dans la main → cacher
+        if ( !UiDragContext.HasItem || !UiDragContext.HeldType.HasValue || UiDragContext.HeldAmount <= 0 )
+        {
+            Panel.Style.Display       = DisplayMode.None;
+            Panel.Style.PointerEvents = PointerEvents.None;
+            return;
+        }
+
+        // Visible
+        Panel.Style.Display       = DisplayMode.Flex;
+        Panel.Style.Position      = PositionMode.Absolute;
+        Panel.Style.PointerEvents = PointerEvents.None;
+        Panel.Style.ZIndex        = 999;
+
+        // Positionner sous la souris
+        var mouse  = Mouse.Position;
+var scale  = Panel.ScaleFromScreen;
+var offset = new Vector2( -36f, -36f );
+
+var p = (mouse + offset) * scale;
+
+Panel.Style.Left = p.x;
+Panel.Style.Top  = p.y;
+
+
+        StateHasChanged();
+    }
+}

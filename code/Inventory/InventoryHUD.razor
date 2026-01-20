@@ -1,0 +1,213 @@
+@using Sandbox
+@using System.Linq
+@namespace Astrofront 
+@inherits PanelComponent 
+
+<root class="invquick-root @(_isVisible ? "visible" : "hidden")">
+
+    <!-- ===== BARRE DE POIDS (indépendante du layout des slots) ===== -->
+    <div class="invquick-weight">
+        <div class="weight-bar">
+            <div class="weight-fill @(Weight01 > 0.85f ? "heavy" : null)"
+                 style="height: @(Weight01 * 100f)%">
+            </div>
+        </div>
+        <div class="weight-text">@($"{WeightPercent}%")</div>
+    </div>
+
+    <!-- ===== BARRE D'INVENTAIRE (slots) ===== -->
+    <div class="invquick-bar">
+        @for ( int i = 0; i < _slotCount; i++ )
+        {
+            var isHands = (i == 0);
+            var s = _slots[i];
+
+            // Slot 0 = HANDS : on ignore le contenu réel du slot
+            var hasItem = !isHands && s.HasItem;
+
+            var isSelected = i == _selected;
+            var isRecent   = i == _prevSelected && _sincePrev < PrevHighlightDuration;
+
+            var typeClass = isHands ? "type-hands" : SlotTypeClass( s );
+            var name      = isHands ? "HANDS" : (hasItem ? SlotLabel( s ) : "");
+
+            <div class="invquick-slot 
+                        @(isSelected ? "selected" : null) 
+                        @(isRecent ? "recent" : null) 
+                        @(hasItem || isHands ? "has-item" : "empty") 
+                        @typeClass">
+
+                <div class="slot-icon"></div>
+
+                @if ( hasItem && s.Count > 0 )
+                {
+                    <div class="slot-stack">@($"x{s.Count}")</div>
+                }
+
+                @if ( hasItem || isHands )
+				{
+					<div class="slot-name">@name</div>
+				}
+
+
+                <div class="slot-index">@((i+1).ToString())</div>
+            </div>
+        }
+    </div>
+</root>
+
+@code
+{
+    private InventorySystem _inv;
+    private int _slotCount = 5;
+    private int _selected = 0;
+    private InventorySystem.Slot[] _slots = new InventorySystem.Slot[5];
+
+    private bool _isVisible = false;
+    private RealTimeSince _sinceShown;
+
+    private int _prevSelected = -1;
+    private RealTimeSince _sincePrev;
+
+    private const float ShowDuration = 1.35f;
+    private const float PrevHighlightDuration = 0.22f;
+
+    protected override void OnStart()
+    {
+        TryBindLocalInventory();
+    }
+
+    protected override void OnUpdate()
+    {
+        if ( _inv == null )
+        {
+            TryBindLocalInventory();
+            return;
+        }
+
+        if ( _isVisible && _sinceShown > ShowDuration )
+        {
+            _isVisible = false;
+            StateHasChanged();
+        }
+    }
+
+    protected override void OnDestroy()
+    {
+        if ( _inv != null )
+        {
+            _inv.SelectionChanged -= OnSelectionChanged;
+            _inv.SlotsChanged     -= OnSlotsChanged;
+        }
+    }
+
+    private void TryBindLocalInventory()
+    {
+        var ps = Scene?.GetAllComponents<PlayerState>()
+                     ?.FirstOrDefault(p => p != null
+                                           && !p.IsProxy
+                                           && p.GameObject != null
+                                           && p.GameObject.Tags.Has("localplayer"));
+
+        if ( ps == null )
+        {
+            var local = Connection.Local;
+            if ( local != null )
+            {
+                ps = Scene?.GetAllComponents<PlayerState>()
+                         ?.FirstOrDefault(p => p != null
+                                               && !p.IsProxy
+                                               && p.Network != null
+                                               && p.Network.Owner == local);
+            }
+        }
+
+        if ( ps == null ) return;
+
+        _inv = ps.GameObject.Components.Get<InventorySystem>( FindMode.EverythingInSelfAndDescendants );
+        if ( _inv == null ) return;
+
+        _slotCount = _inv.SlotCount;
+        _selected  = _inv.SelectedIndex;
+
+        PullSlots();
+
+        _inv.SelectionChanged += OnSelectionChanged;
+        _inv.SlotsChanged     += OnSlotsChanged;
+    }
+
+    private void PullSlots()
+    {
+        var list = _inv?.GetSlots();
+        if ( list == null ) return;
+
+        if ( _slots == null || _slots.Length != _slotCount )
+            _slots = new InventorySystem.Slot[_slotCount];
+
+        for ( int i = 0; i < _slotCount; i++ )
+            _slots[i] = list[i];
+    }
+
+    private void ShowBar()
+    {
+        _isVisible = true;
+        _sinceShown = 0;
+    }
+
+    private void OnSelectionChanged( int idx )
+    {
+        _prevSelected = _selected;
+        _sincePrev = 0;
+
+        _selected = idx;
+
+        PullSlots();
+        ShowBar();
+
+        StateHasChanged();
+    }
+
+    private void OnSlotsChanged()
+    {
+        PullSlots();
+        ShowBar();
+        StateHasChanged();
+    }
+
+    private string SlotTypeClass( InventorySystem.Slot s )
+    {
+        if ( !s.HasItem ) return "type-empty";
+
+        switch ( s.Type )
+        {
+            case ResourceType.Stellium: return "type-stellium";
+            case ResourceType.Plasma:   return "type-plasma";
+            case ResourceType.Alloy:    return "type-alloy";
+            default:                    return "type-generic";
+        }
+    }
+
+    private string SlotLabel( InventorySystem.Slot s )
+    {
+        switch ( s.Type )
+        {
+            case ResourceType.Stellium: return "STELLIUM";
+            case ResourceType.Plasma:   return "PLASMA";
+            case ResourceType.Alloy:    return "ALLOY";
+            default:                    return "ITEM";
+        }
+    }
+
+    // ======== POIDS (en %) ========
+    private float Weight01
+    {
+        get
+        {
+            if ( _inv == null || _inv.CapacitySpace <= 0 ) return 0f;
+            var v = (float)_inv.UsedSpace() / (float)_inv.CapacitySpace;
+            return v.Clamp(0f, 1f);
+        }
+    }
+
+    private int WeightPercent => (int)(Weight01 * 100f);
+}

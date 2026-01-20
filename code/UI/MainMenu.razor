@@ -1,0 +1,143 @@
+@using Sandbox
+@using Sandbox.UI
+@using Sandbox.Network
+@using System.Collections.Generic
+@using System.Threading.Tasks
+@using Astrofront            <!-- pour SceneLoader.Instance -->
+@inherits Panel
+
+<root class="menu-root">
+  <div class="title">Astrofront</div>
+
+  <div class="row">
+    <button class="btn" onclick=@(()=> HostClick())>Create Server</button>
+    <button class="btn" onclick=@(()=> RefreshLobbies())>Refresh</button>
+  </div>
+
+  <div class="status">Net Active: @(Networking.IsActive ? "true" : "false")</div>
+
+  @if (!string.IsNullOrEmpty(Status))
+  {
+    <div class="status">@Status</div>
+  }
+
+  @if (Error is not null)
+  {
+    <div class="error">@Error</div>
+  }
+
+  <div class="lobbies">
+    @if (Lobbies is not null && Lobbies.Count > 0)
+    {
+      @foreach (var l in Lobbies)
+      {
+        <div class="lobby">
+          <div class="lobby-name">@l.Name (@l.Members/@l.MaxMembers)</div>
+          <div class="lobby-id">ID: @l.LobbyId</div>
+          <button class="btn join" onclick=@(async ()=> await JoinLobby(l.LobbyId))>Join</button>
+        </div>
+      }
+    }
+    else
+    {
+      <div class="hint">No servers found — create one or refresh.</div>
+    }
+  </div>
+
+  <div class="join-manual">
+    <label>Join by LobbyId</label>
+    <input @bind="ManualLobbyId" placeholder="paste lobby id (number)..." />
+    <button class="btn" onclick=@(async ()=> await JoinManual())>Join</button>
+  </div>
+</root>
+
+@code {
+  private List<LobbyInformation> Lobbies { get; set; } = new();
+private string ManualLobbyId { get; set; }
+private string Error { get; set; }
+private string Status { get; set; }
+
+
+  protected override void OnAfterTreeRender( bool firstTime )
+  {
+    if ( firstTime )
+      _ = RefreshLobbies();
+  }
+
+  async Task RefreshLobbies()
+{
+  try
+  {
+    Error = null;
+    Status = "Refreshing lobbies…";
+    var list = await Networking.QueryLobbies();        // List<LobbyInformation>
+
+    // 🔒 Garde uniquement le lobby officiel
+    const string LobbyName = "Lobby_01"; // adapte si tu utilises un autre nom
+    if ( list != null )
+      list = list.Where( l => string.Equals( l.Name, LobbyName, System.StringComparison.OrdinalIgnoreCase ) ).ToList();
+
+
+    Lobbies = list is null ? new() : new(list);
+    Status = $"Found {Lobbies.Count} lobby(ies)";
+    StateHasChanged();
+    Log.Info($"[MainMenu] QueryLobbies -> {Lobbies.Count} (filtered only '{LobbyName}')");
+  }
+  catch (System.Exception e)
+  {
+    Error = e.Message;
+    Status = null;
+    StateHasChanged();
+    Log.Error($"[MainMenu] QueryLobbies error: {e.Message}");
+  }
+}
+
+
+  void HostClick()
+  {
+    Status = "Creating lobby…";
+    Log.Info("[MainMenu] HostClick -> Networking.CreateLobby()");
+
+    Networking.CreateLobby( new LobbyConfig
+    {
+      MaxPlayers = 8,
+      Privacy = LobbyPrivacy.Public,   // public pour apparaître dans la liste
+      Name = "Astrofront Lobby"
+    } );
+
+    // Host devient actif quasi instantanément → on peut charger tout de suite
+    SceneLoader.Instance?.LoadGameScene();
+  }
+
+  async Task JoinLobby( ulong id )
+  {
+    Status = $"Connecting {id}…";
+    Log.Info($"[MainMenu] JoinLobby -> Networking.Connect({id})");
+    Networking.Connect( id );
+
+    // Attendre que la connexion devienne active avant de charger la scène (évite l'écran noir)
+    var t0 = RealTime.Now;
+    while ( !Networking.IsActive && RealTime.Now - t0 < 5f )
+    {
+      await Task.DelayRealtimeSeconds( 0.05f );
+    }
+
+    if ( Networking.IsActive )
+    {
+      SceneLoader.Instance?.LoadGameScene();
+    }
+    else
+    {
+      Error = "Join timeout — try again.";
+      Log.Warning("[MainMenu] Join timeout.");
+    }
+  }
+
+  async Task JoinManual()
+  {
+    if ( ulong.TryParse( ManualLobbyId?.Trim(), out var id ) )
+      await JoinLobby( id );
+    else
+      Error = "LobbyId invalide (attendu: nombre)";
+  }
+}

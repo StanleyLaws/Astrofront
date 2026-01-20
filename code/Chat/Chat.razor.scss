@@ -1,0 +1,110 @@
+$border-radius: 6px;
+
+Chat {
+  position: absolute;
+  bottom: 40px;
+  left: 20px;
+  width: 40vw;
+  height: 35vh;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  font-family: Poppins, sans-serif;
+  text-shadow: 1px 1px 2px #000a;
+  pointer-events: none; // fermé par défaut (pas d'interaction)
+
+  .output {
+    display: flex;
+    flex-direction: column;
+    /* on empile du haut vers le bas et on laisse scroller */
+    justify-content: flex-end;
+    align-content: flex-start;
+
+    padding: 6px;
+    gap: 8px;                 /* un peu plus d’air entre lignes */
+    height: 100%;
+    overflow-y: scroll;       /* la liste défile verticalement */
+    overflow-x: hidden;
+    border-radius: $border-radius $border-radius 0 0;
+    background-color: transparent;
+
+    .chat_entry {
+      /* chaque entrée garde sa hauteur, ne rétrécit pas */
+      flex: 0 0 auto;
+    }
+
+    .message {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      color: #fff;
+
+      /* longs mots / URLs : ne cassent pas la mise en page */
+      white-space: normal;
+      word-break: break-all;
+
+      &:not(.system) .author::after {
+        content: ":"; 
+        margin-left: 2px; 
+        opacity: 0.9;
+      }
+
+      &.system { font-weight: 700; }
+
+      .author {
+        color: #777F7E;      // couleur par défaut du pseudo
+        font-weight: 700;
+
+        &.self { color: #A2ADAB; } // couleur du pseudo pour soi-même
+      }
+
+      .text { color: #eee; }
+    }
+  }
+
+  &.open {
+    pointer-events: all; // ouvert = interactif
+
+    .output, .header, .input {
+      background-color: rgba(25,25,29,0.36);
+      backdrop-filter: blur(2px);
+    }
+
+    .input {
+      background-color: rgba(25,25,29,0.48);
+    }
+  }
+
+  .input-container {
+    position: relative;
+
+    .input {
+      color: white;
+      padding: 6px;
+      border-radius: 0 0 $border-radius $border-radius;
+
+      TextEntry {
+        color: white;
+      }
+    }
+  }
+
+  /* ==============================
+     Ajout : tag de grade coloré
+     ============================== */
+
+  // Insère le tag avant le pseudo, en se basant sur l'attribut data-rank
+  // (data-rank doit valoir ADMIN / MODERATOR / VIP / Joueur)
+	  // Tag de grade coloré (le pseudo conserve sa couleur)
+	.author .tag {
+	  font-weight: 700;
+	  margin-right: 6px;
+	  text-transform: uppercase; // force le tag en MAJUSCULES
+	}
+
+	.author.rank-admin .tag     { color: #FF0C20; }
+	.author.rank-moderator .tag { color: #3A51FF; }
+	.author.rank-vip .tag       { color: #FF7716; }
+	.author.rank-player .tag    { color: #0ECC21; }
+
+}

@@ -1,0 +1,451 @@
+@namespace Astrofront
+@using Sandbox
+@using System.Linq
+@inherits PanelComponent
+
+@if ( !IsOpen ) 
+{
+    return;
+}
+
+<div class="invmanage-root">
+    <div class="invmanage-header">
+        <span class="title">Inventaire</span>
+    </div>
+
+    <div class="invmanage-bar">
+        @for (int i = 0; i < _slotCount; i++)
+{
+    var isHands = (i == 0);
+
+    var slot     = (i < Slots.Count) ? Slots[i] : null;
+    var hasItem  = !isHands && slot != null && slot.Amount > 0;
+    var label    = isHands ? "HANDS" : (hasItem ? GetLabel(slot) : $"Slot {i+1}");
+
+    <InventoryManageSlot
+        SlotIndex="@i"
+        ItemName="@label"
+        Amount="@(hasItem ? slot.Amount : 0)"
+        HasItem="@hasItem"
+        Locked="@isHands"
+        ItemType="@(hasItem ? slot.Type : default)" />
+}
+
+
+    </div>
+</div>
+
+@code {
+    public static InventoryManagePanel Instance { get; private set; }
+
+    public bool IsOpen { get; private set; }
+
+    private InventorySystem _inv;
+    private int _slotCount = 5;
+
+    private class SlotData
+    {
+        public ResourceType Type;
+        public int Amount;
+    }
+
+    private List<SlotData> Slots { get; set; } = new();
+
+    public InventoryManagePanel()
+    {
+        Instance = this;
+    }
+
+    protected override void OnStart()
+    {
+        BindLocalInventory();
+        BuildSlotsFromInventory();
+    }
+
+    protected override void OnUpdate()
+    {
+        if ( _inv == null )
+        {
+            BindLocalInventory();
+        }
+    }
+
+    protected override void OnDestroy()
+    {
+        _inv = null;
+    }
+
+    private void BindLocalInventory()
+    {
+        if ( _inv != null ) return;
+
+        var scene = Scene ?? Game.ActiveScene;
+        if ( scene == null ) return;
+
+        var ps = scene.GetAllComponents<PlayerState>()
+                      ?.FirstOrDefault(p => p != null
+                                         && !p.IsProxy
+                                         && p.GameObject != null
+                                         && (
+                                                p.GameObject.Tags.Has("localplayer")
+                                             || (Connection.Local != null
+                                                 && p.Network != null
+                                                 && p.Network.Owner == Connection.Local)
+                                            ));
+
+        if ( ps == null ) return;
+
+        _inv = ps.GameObject.Components.Get<InventorySystem>( FindMode.EverythingInSelfAndDescendants );
+        if ( _inv == null ) return;
+
+        var list = _inv.GetSlots();
+        if ( list != null )
+            _slotCount = list.Count;
+
+        BuildSlotsFromInventory();
+
+        StateHasChanged();
+        Log.Info("[InventoryManagePanel] lié à InventorySystem local.");
+    }
+
+    public void BuildSlotsFromInventory()
+    {
+        Slots.Clear();
+
+        if ( _inv == null ) return;
+
+        var list = _inv.GetSlots();
+        if ( list == null ) return;
+
+        _slotCount = list.Count;
+
+        for ( int i = 0; i < _slotCount; i++ )
+        {
+            var src = list[i];
+
+            // Slot 0 = réservé (hands) -> on le reflète vide dans l'UI
+            if ( i == 0 )
+            {
+                Slots.Add( new SlotData { Type = default, Amount = 0 } );
+                continue;
+            }
+
+            Slots.Add( new SlotData
+            {
+                Type   = src.Type,
+                Amount = (src.HasItem && src.Count > 0) ? src.Count : 0
+            } );
+        }
+    }
+
+    private void CancelPendingInventoryHoldIfAny()
+    {
+        if ( !UiDragContext.HasItem )
+            return;
+
+        if ( UiDragContext.SourceKind != UiDragSourceKind.Inventory )
+            return;
+
+        var heldTypeOpt = UiDragContext.HeldType;
+        var amount      = UiDragContext.HeldAmount;
+
+        if ( !heldTypeOpt.HasValue || amount <= 0 )
+        {
+            UiDragContext.Clear();
+            return;
+        }
+
+        var type = heldTypeOpt.Value;
+        int srcIndex = UiDragContext.SourceIndex;
+
+        BuildSlotsFromInventory();
+
+        // Ne jamais remettre dans HANDS
+        if ( srcIndex <= 0 )
+            srcIndex = 1;
+
+        if ( srcIndex >= 1 && srcIndex < Slots.Count )
+        {
+            var slot = Slots[srcIndex];
+
+            if ( slot.Amount <= 0 || slot.Type == type )
+            {
+                slot.Type   = type;
+                slot.Amount += amount;
+                Slots[srcIndex] = slot;
+            }
+            else
+            {
+                bool placed = false;
+
+                for ( int i = 1; i < Slots.Count; i++ )
+                {
+                    var s = Slots[i];
+                    if ( s.Amount <= 0 || s.Type == type )
+                    {
+                        s.Type   = type;
+                        s.Amount += amount;
+                        Slots[i] = s;
+                        placed = true;
+                        break;
+                    }
+                }
+
+                if ( !placed )
+                {
+                    var s = Slots[srcIndex];
+                    s.Type   = type;
+                    s.Amount += amount;
+                    Slots[srcIndex] = s;
+                }
+            }
+        }
+
+        ApplySlotsToInventory();
+        StateHasChanged();
+        UiDragContext.Clear();
+    }
+
+    private void ApplySlotsToInventory()
+    {
+        if ( _inv == null ) return;
+
+        var count = System.Math.Min( _slotCount, Slots.Count );
+
+        for ( int i = 0; i < count; i++ )
+        {
+            // ✅ Slot 0 réservé HANDS : on ne le modifie jamais
+            if ( i == 0 )
+                continue;
+
+            var sd = Slots[i];
+            var amount = sd.Amount;
+            var type   = sd.Type;
+
+            if ( amount <= 0 )
+                _inv.SetSlotRaw( i, type, 0 );
+            else
+                _inv.SetSlotRaw( i, type, amount );
+        }
+    }
+
+    public static void Show()
+    {
+        if ( Instance == null ) return;
+
+        if ( Instance._inv == null )
+            Instance.BindLocalInventory();
+
+        Instance.BuildSlotsFromInventory();
+        Instance.IsOpen = true;
+        Instance.StateHasChanged();
+    }
+
+    public static void Hide()
+    {
+        if ( Instance == null ) return;
+
+        Instance.CancelPendingInventoryHoldIfAny();
+
+        Instance.IsOpen = false;
+        Instance.StateHasChanged();
+    }
+
+    public void OnDragDrop( int fromIndex, int toIndex )
+    {
+        // ✅ hands interdit
+        if ( fromIndex == 0 || toIndex == 0 ) return;
+
+        if ( fromIndex < 0 || fromIndex >= Slots.Count ) return;
+        if ( toIndex   < 0 || toIndex   >= Slots.Count ) return;
+        if ( fromIndex == toIndex ) return;
+
+        var tmp = Slots[fromIndex];
+        Slots[fromIndex] = Slots[toIndex];
+        Slots[toIndex]   = tmp;
+
+        ApplySlotsToInventory();
+        StateHasChanged();
+    }
+
+    private string GetLabel( SlotData s )
+    {
+        if ( s == null || s.Amount <= 0 ) return "";
+
+        return s.Type switch
+        {
+            ResourceType.Stellium => "Stellium",
+            ResourceType.Plasma   => "Plasma",
+            ResourceType.Alloy    => "Alloy",
+            _                     => s.Type.ToString()
+        };
+    }
+
+    public void OnSlotPrimaryClick( int index )
+    {
+        // ✅ hands interdit
+        if ( index == 0 ) return;
+
+        if ( index < 0 || index >= Slots.Count ) return;
+
+        var slot = Slots[index];
+
+        if ( !UiDragContext.HasItem )
+        {
+            if ( slot == null || slot.Amount <= 0 )
+                return;
+
+            UiDragContext.BeginHold( slot.Type, slot.Amount, UiDragSourceKind.Inventory, index );
+
+            slot.Type   = default;
+            slot.Amount = 0;
+
+            ApplySlotsToInventory();
+            StateHasChanged();
+            return;
+        }
+
+        var heldTypeOpt = UiDragContext.HeldType;
+        if ( !heldTypeOpt.HasValue )
+        {
+            UiDragContext.Clear();
+            return;
+        }
+
+        var heldType   = heldTypeOpt.Value;
+        var heldAmount = UiDragContext.HeldAmount;
+
+        if ( heldAmount <= 0 )
+        {
+            UiDragContext.Clear();
+            return;
+        }
+
+        if ( UiDragContext.SourceKind == UiDragSourceKind.LootPanel )
+        {
+            if ( _inv == null ) return;
+
+            UiLootInventoryBridge.RequestLootToInventory( heldType, heldAmount, index );
+            return;
+        }
+
+        if ( slot == null )
+        {
+            slot = new SlotData();
+            Slots[index] = slot;
+        }
+
+        if ( slot.Amount <= 0 )
+        {
+            slot.Type   = heldType;
+            slot.Amount = heldAmount;
+
+            UiDragContext.Clear();
+            ApplySlotsToInventory();
+            StateHasChanged();
+            return;
+        }
+
+        if ( slot.Type == heldType )
+        {
+            slot.Amount += heldAmount;
+
+            UiDragContext.Clear();
+            ApplySlotsToInventory();
+            StateHasChanged();
+            return;
+        }
+
+        var tmpType  = slot.Type;
+        var tmpCount = slot.Amount;
+
+        slot.Type   = heldType;
+        slot.Amount = heldAmount;
+
+        UiDragContext.BeginHold( tmpType, tmpCount, UiDragSourceKind.Inventory, index );
+
+        ApplySlotsToInventory();
+        StateHasChanged();
+    }
+
+    public void OnSlotSecondaryClick( int index )
+    {
+        // ✅ hands interdit
+        if ( index == 0 ) return;
+
+        if ( index < 0 || index >= Slots.Count ) return;
+
+        var slot = Slots[index];
+
+        if ( !UiDragContext.HasItem )
+        {
+            if ( slot == null || slot.Amount <= 0 )
+                return;
+
+            UiDragContext.BeginHold( slot.Type, 1, UiDragSourceKind.Inventory, index );
+
+            slot.Amount -= 1;
+            if ( slot.Amount <= 0 )
+            {
+                slot.Amount = 0;
+                slot.Type   = default;
+            }
+
+            ApplySlotsToInventory();
+            StateHasChanged();
+            return;
+        }
+
+        var heldTypeOpt = UiDragContext.HeldType;
+        if ( !heldTypeOpt.HasValue )
+        {
+            UiDragContext.Clear();
+            return;
+        }
+
+        var heldType   = heldTypeOpt.Value;
+        var heldAmount = UiDragContext.HeldAmount;
+
+        if ( heldAmount <= 0 )
+        {
+            UiDragContext.Clear();
+            return;
+        }
+
+        if ( UiDragContext.SourceKind == UiDragSourceKind.LootPanel )
+        {
+            if ( _inv == null ) return;
+
+            UiLootInventoryBridge.RequestLootToInventory( heldType, 1, index );
+            return;
+        }
+
+        if ( slot == null )
+        {
+            slot = new SlotData();
+            Slots[index] = slot;
+        }
+
+        if ( slot.Amount <= 0 )
+        {
+            slot.Type   = heldType;
+            slot.Amount = 1;
+
+            UiDragContext.TakeFromHand( 1 );
+
+            ApplySlotsToInventory();
+            StateHasChanged();
+            return;
+        }
+
+        if ( slot.Type == heldType )
+        {
+            slot.Amount += 1;
+            UiDragContext.TakeFromHand( 1 );
+
+            ApplySlotsToInventory();
+            StateHasChanged();
+            return;
+        }
+    }
+}

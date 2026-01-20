@@ -1,0 +1,163 @@
+{
+  "RootObject": {
+    "__guid": "b9dc58dd-a300-427e-a6ed-fcd3b651f276",
+    "__version": 1,
+    "Flags": 0,
+    "Name": "spectator",
+    "Position": "0,0,0",
+    "Rotation": "0,0,0,1",
+    "Scale": "1,1,1",
+    "Tags": "",
+    "Enabled": true,
+    "NetworkMode": 2,
+    "NetworkInterpolation": true,
+    "NetworkOrphaned": 0,
+    "OwnerTransfer": 1,
+    "Components": [
+      {
+        "__type": "Astrofront.SpectatorController",
+        "__guid": "3c71e796-1316-4470-a8df-f5e34d236a78",
+        "__enabled": true,
+        "BaseSpeed": 300,
+        "BoostMultiplier": 4,
+        "ControlCamera": true,
+        "DisableCollisions": true,
+        "HideRenderers": true,
+        "LookSensitivity": 0.15,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null
+      }
+    ],
+    "Children": [
+      {
+        "__guid": "c7d817d6-ca16-41ca-a6e0-780612030e04",
+        "__version": 1,
+        "Flags": 0,
+        "Name": "Spectator",
+        "Position": "0,0,0",
+        "Rotation": "0,0,0,1",
+        "Scale": "1,1,1",
+        "Tags": "",
+        "Enabled": true,
+        "NetworkMode": 2,
+        "NetworkInterpolation": true,
+        "NetworkOrphaned": 0,
+        "OwnerTransfer": 1,
+        "Components": [],
+        "Children": []
+      },
+      {
+        "__guid": "2b3fd019-85c6-4359-b8b3-6df06d40c96f",
+        "__version": 1,
+        "Flags": 0,
+        "Name": "CameraPivot",
+        "Position": "0,0,116.574",
+        "Rotation": "0,0,0,1",
+        "Scale": "1,1,1",
+        "Tags": "",
+        "Enabled": true,
+        "NetworkMode": 2,
+        "NetworkInterpolation": true,
+        "NetworkOrphaned": 0,
+        "OwnerTransfer": 1,
+        "Components": [
+          {
+            "__type": "Astrofront.OwnerOnlyCamera",
+            "__guid": "fa267e60-2512-4ebd-8199-9eacc44e6f98",
+            "__enabled": true,
+            "Camera": {
+              "_type": "component",
+              "component_id": "b943f6f3-53e8-40b2-9190-0db715b7fce8",
+              "go": "98870df7-4a59-47df-bf4c-bd7a688c5c9f",
+              "component_type": "CameraComponent"
+            },
+            "OnComponentDestroy": null,
+            "OnComponentDisabled": null,
+            "OnComponentEnabled": null,
+            "OnComponentFixedUpdate": null,
+            "OnComponentStart": null,
+            "OnComponentUpdate": null
+          }
+        ],
+        "Children": [
+          {
+            "__guid": "98870df7-4a59-47df-bf4c-bd7a688c5c9f",
+            "__version": 1,
+            "Flags": 0,
+            "Name": "CameraSpectator",
+            "Position": "0,0,0",
+            "Rotation": "0,0,0,1",
+            "Scale": "1,1,1",
+            "Tags": "maincamera",
+            "Enabled": true,
+            "NetworkMode": 2,
+            "NetworkInterpolation": true,
+            "NetworkOrphaned": 0,
+            "OwnerTransfer": 1,
+            "Components": [
+              {
+                "__type": "Sandbox.CameraComponent",
+                "__guid": "b943f6f3-53e8-40b2-9190-0db715b7fce8",
+                "__enabled": true,
+                "BackgroundColor": "0.33333,0.46275,0.52157,1",
+                "ClearFlags": "All",
+                "EnablePostProcessing": true,
+                "FieldOfView": 90,
+                "FovAxis": "Horizontal",
+                "IsMainCamera": true,
+                "OnComponentDestroy": null,
+                "OnComponentDisabled": null,
+                "OnComponentEnabled": null,
+                "OnComponentFixedUpdate": null,
+                "OnComponentStart": null,
+                "OnComponentUpdate": null,
+                "Orthographic": false,
+                "OrthographicHeight": 1204,
+                "PostProcessAnchor": null,
+                "Priority": 1,
+                "RenderExcludeTags": "",
+                "RenderTags": "",
+                "RenderTexture": null,
+                "TargetEye": "None",
+                "Viewport": "0,0,1,1",
+                "ZFar": 10000,
+                "ZNear": 10
+              }
+            ],
+            "Children": []
+          }
+        ]
+      }
+    ],
+    "__properties": {
+      "NetworkInterpolation": true,
+      "TimeScale": 1,
+      "WantsSystemScene": true,
+      "Metadata": {},
+      "NavMesh": {
+        "Enabled": false,
+        "IncludeStaticBodies": true,
+        "IncludeKeyframedBodies": true,
+        "EditorAutoUpdate": true,
+        "AgentHeight": 64,
+        "AgentRadius": 16,
+        "AgentStepSize": 18,
+        "AgentMaxSlope": 40,
+        "ExcludedBodies": "",
+        "IncludedBodies": ""
+      }
+    },
+    "__variables": []
+  },
+  "ResourceVersion": 2,
+  "ShowInMenu": false,
+  "MenuPath": null,
+  "MenuIcon": null,
+  "DontBreakAsTemplate": false,
+  "__references": [],
+  "__version": 2
+}

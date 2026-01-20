@@ -1,0 +1,121 @@
+@namespace Astrofront
+@using Sandbox
+@using Sandbox.UI
+@inherits Panel
+
+<root class="loot-slot @(HasItem ? "has-item" : "empty") @TypeClass @(IsHovered ? "hover" : "")"
+      onmouseover=@OnHoverEnter
+      onmouseout=@OnHoverLeave>
+
+    <div class="slot-icon"></div>
+
+    @if ( HasItem && Amount > 0 )
+    {
+        <div class="slot-stack">@($"x{Amount}")</div>
+    }
+
+</root>
+
+@code {
+    public int SlotIndex { get; set; }
+
+    // ✅ NOUVEAU : type affiché (pour l’icône)
+    public ResourceType Type { get; set; }
+
+    // ✅ on garde Amount/HasItem
+    public int Amount { get; set; }
+    public bool HasItem { get; set; }
+
+    public bool IsHovered { get; set; }
+
+    private string TypeClass => HasItem ? Type switch
+    {
+        ResourceType.Stellium => "type-stellium",
+        ResourceType.Plasma   => "type-plasma",
+        ResourceType.Alloy    => "type-alloy",
+        _                     => "type-generic"
+    } : "type-empty";
+
+    // ----- état partagé pour le drag -----
+    private static int? DragOriginIndex;
+    private static LootSlot CurrentHoverSlot;
+    private static Vector2 _pressPos;
+    private static RealTimeSince _sincePress;
+
+    private void OnHoverEnter()
+    {
+        IsHovered = true;
+        CurrentHoverSlot = this;
+        StateHasChanged();
+    }
+
+    private void OnHoverLeave()
+    {
+        IsHovered = false;
+        if ( CurrentHoverSlot == this )
+            CurrentHoverSlot = null;
+
+        StateHasChanged();
+    }
+
+    protected override void OnMouseDown( MousePanelEvent e )
+    {
+        base.OnMouseDown( e );
+
+        if ( e.Button != "mouseleft" && e.Button != "mouseright" )
+            return;
+
+        _pressPos   = Mouse.Position;
+        _sincePress = 0;
+
+        if ( e.Button == "mouseleft" && HasItem )
+        {
+            DragOriginIndex = SlotIndex;
+        }
+    }
+
+    protected override void OnMouseUp( MousePanelEvent e )
+    {
+        base.OnMouseUp( e );
+
+        var btn = e.Button;
+        if ( btn != "mouseleft" && btn != "mouseright" )
+            return;
+
+        var target = CurrentHoverSlot ?? this;
+        var logicalIndex = target.SlotIndex;
+
+        var dist    = (Mouse.Position - _pressPos).Length;
+        var isClick = dist < 5f && _sincePress < 0.4f;
+
+        if ( btn == "mouseright" )
+        {
+            PanelTestUI.Instance?.OnSlotClick( logicalIndex, "mouseright" );
+            DragOriginIndex = null;
+            return;
+        }
+
+        if ( btn == "mouseleft" )
+        {
+            if ( isClick )
+            {
+                PanelTestUI.Instance?.OnSlotClick( logicalIndex, "mouseleft" );
+                DragOriginIndex = null;
+                return;
+            }
+
+            if ( DragOriginIndex.HasValue )
+            {
+                var from = DragOriginIndex.Value;
+                var to   = logicalIndex;
+
+                if ( from != to )
+                {
+                    PanelTestUI.Instance?.OnDragDrop( from, to );
+                }
+            }
+
+            DragOriginIndex = null;
+        }
+    }
+}

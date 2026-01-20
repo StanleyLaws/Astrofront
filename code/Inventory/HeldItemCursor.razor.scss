@@ -1,0 +1,79 @@
+HeldItemCursor {
+    position: absolute;
+    pointer-events: none;
+    z-index: 999;
+}
+
+.heldcursor-root {
+    // position gérée côté C#
+}
+
+/* === NOUVEAU : plus de cadre du tout === */
+.heldcursor-slot {
+    width: 72px;
+    height: 72px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    position: relative;
+
+    /* PAS de fond, PAS de bordure */
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+
+/* icône */
+.heldcursor-slot .slot-icon {
+    width: 72px;
+    height: 72px;
+
+	transform: scale(1.5);
+    background-color: transparent;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+
+    opacity: 0.95;
+    filter: blur(0);
+
+    pointer-events: none;
+}
+
+
+/* stack */
+.heldcursor-slot .slot-stack {
+    position: absolute;
+    top: 1px;
+    left: 3px;
+	
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+	
+    color: rgba(160, 210, 255, 0.95);
+    text-shadow: 0 0 6px rgba(90, 150, 255, 0.35);
+
+    pointer-events: none;
+}
+
+
+/* bordure uniforme : les classes type servent aux icônes uniquement */
+.type-stellium,
+.type-plasma,
+.type-alloy,
+.type-generic,
+.type-empty {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Icônes par type */
+.type-stellium .slot-icon { background-image: url("/ui/icons/stellium.png"); }
+.type-plasma   .slot-icon { background-image: url("/ui/icons/plasma.png"); }
+.type-alloy    .slot-icon { background-image: url("/ui/icons/alloy.png"); }
+.type-generic  .slot-icon { background-image: url("/ui/icons/item.png"); }
+
+.type-empty .slot-icon { background-image: none; }

@@ -1,0 +1,31 @@
+@using Sandbox
+@using Sandbox.UI
+@using System.Linq
+@inherits Panel
+@namespace Astrofront
+
+<root class="hud-root fullscreen">
+  @if (Local is not null)
+  {
+    <div class="hp">
+      <div class="hp-fill" style=@($"width:{HealthPct}%")></div>
+    </div>
+	
+  }
+</root>
+
+@code {
+  private Astrofront.PlayerState _cached;
+
+  Astrofront.PlayerState Local {
+    get {
+      if ( _cached != null && _cached.IsValid ) return _cached;
+      _cached = Scene.GetAllComponents<Astrofront.PlayerState>()
+                     .FirstOrDefault( p => !p.IsProxy );
+      return _cached;
+    }
+  }
+
+  int HealthPct => Local is null ? 0 : System.Math.Clamp( Local.Health, 0, 100 );
+  protected override int BuildHash() => Local?.Health ?? -1;
+}
