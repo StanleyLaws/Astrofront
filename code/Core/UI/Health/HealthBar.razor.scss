@@ -2,18 +2,26 @@
 .hud-root { pointer-events: none; }
 
 .hp {
-	position: absolute;
-	left: 38%;
-	bottom: 25px;
-	width: 200px;
-	height: 20px;
+  position: absolute;
 
-	background-color: rgba(0, 0, 0, 0.6);
-	overflow: hidden;
+  left: 50%;
+  bottom: 22px;
 
-	/* ✅ arrondi track */
-	border-radius: 6px; /* au lieu de 999px */
+  /* compatible toutes résolutions */
+  transform: translateX(-50%);
+
+  /* réglage “au millimètre” */
+  margin-left: -150px; /* <-- ajuste ici */
+
+  width: 200px;
+  height: 20px;
+
+  background-color: rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  border-radius: 6px;
 }
+
+
 
 .hp-fill {
 	height: 100%;
