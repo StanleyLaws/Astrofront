@@ -5,7 +5,7 @@ namespace Astrofront;
 
 /// Pilote citizen.vanmgrph à partir de MyCustomController + Camera.
 /// Ne gère QUE l'animation (pas la physique).
-public sealed class CitizenAnimDriver : Component
+public sealed class CitizenAnimDriver : Component 
 {
     [Property, Group("Refs")] public MyCustomController Controller { get; set; }
     [Property, Group("Refs")] public SkinnedModelRenderer Body { get; set; }

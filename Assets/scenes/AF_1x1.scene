@@ -419,7 +419,7 @@
           "OnComponentUpdate": null,
           "PlayerPrefab": {
             "_type": "gameobject",
-            "prefab": "prefabs/player2.prefab"
+            "prefab": "prefabs/modes/astrofront/player/player2.prefab"
           },
           "SpawnPoints": [
             {
@@ -429,7 +429,7 @@
           ],
           "SpectatorPrefab": {
             "_type": "gameobject",
-            "prefab": "prefabs/spectator.prefab"
+            "prefab": "prefabs/modes/astrofront/player/spectator.prefab"
           }
         },
         {

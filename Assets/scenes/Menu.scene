@@ -3,7 +3,7 @@
   "GameObjects": [
     {
       "__guid": "c88abb0a-4f84-4412-b390-8549f63688b3",
-      "__version": 1,
+      "__version": 2,
       "Flags": 0,
       "Name": "FallbackCamera",
       "Position": "-186.6736,-186.6736,263.9963",
@@ -12,14 +12,16 @@
       "Tags": "",
       "Enabled": true,
       "NetworkMode": 2,
-      "NetworkInterpolation": true,
+      "NetworkFlags": 0,
       "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
       "OwnerTransfer": 1,
       "Components": [
         {
           "__type": "Astrofront.FallbackCamera",
           "__guid": "5c07419b-ca17-4eff-89f5-8929049f6cb8",
           "__enabled": true,
+          "Flags": 0,
           "Camera": {
             "_type": "component",
             "component_id": "899075b0-b7c9-4404-b038-76315014341f",
@@ -37,6 +39,7 @@
           "__type": "Sandbox.CameraComponent",
           "__guid": "899075b0-b7c9-4404-b038-76315014341f",
           "__enabled": true,
+          "Flags": 0,
           "BackgroundColor": "0.33333,0.46275,0.52157,1",
           "ClearFlags": "All",
           "EnablePostProcessing": true,
@@ -66,7 +69,7 @@
     },
     {
       "__guid": "48d6c996-6c3d-4cbc-bd55-861ffb278673",
-      "__version": 1,
+      "__version": 2,
       "Flags": 0,
       "Name": "UIRoot",
       "Position": "-186.6736,-186.6736,263.9963",
@@ -75,14 +78,16 @@
       "Tags": "",
       "Enabled": true,
       "NetworkMode": 2,
-      "NetworkInterpolation": true,
+      "NetworkFlags": 0,
       "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
       "OwnerTransfer": 1,
       "Components": [
         {
           "__type": "Sandbox.ScreenPanel",
           "__guid": "04a922b7-546e-431a-92da-0bc1be302c20",
           "__enabled": true,
+          "Flags": 0,
           "AutoScreenScale": true,
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
@@ -100,6 +105,7 @@
           "__type": "Astrofront.MenuRootPanel",
           "__guid": "251eb360-240b-4b77-a364-a3802f70a4d9",
           "__enabled": true,
+          "Flags": 0,
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
@@ -112,7 +118,7 @@
     },
     {
       "__guid": "da90d589-9c1c-4036-8eb6-b86d3f020743",
-      "__version": 1,
+      "__version": 2,
       "Flags": 0,
       "Name": "SceneLoader",
       "Position": "-126.4293,-187.5311,115.5769",
@@ -121,14 +127,16 @@
       "Tags": "",
       "Enabled": true,
       "NetworkMode": 2,
-      "NetworkInterpolation": true,
+      "NetworkFlags": 0,
       "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
       "OwnerTransfer": 1,
       "Components": [
         {
           "__type": "Astrofront.SceneLoader",
           "__guid": "7c560b9d-f5ff-40a6-b2ac-9db876b84e84",
           "__enabled": true,
+          "Flags": 0,
           "GameScenePath": "scenes/AF_1x1.scene",
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
@@ -142,7 +150,7 @@
     },
     {
       "__guid": "16ec5d27-1f08-44ef-be9f-26612175658a",
-      "__version": 1,
+      "__version": 2,
       "Flags": 0,
       "Name": "_Starup",
       "Position": "-343.5108,-398.1125,369.7704",
@@ -151,14 +159,16 @@
       "Tags": "",
       "Enabled": true,
       "NetworkMode": 2,
-      "NetworkInterpolation": true,
+      "NetworkFlags": 0,
       "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
       "OwnerTransfer": 1,
       "Components": [
         {
           "__type": "Astrofront.StartupRouter",
           "__guid": "e89fb98c-78ec-475f-b7bc-0ce48bbb8bdb",
           "__enabled": true,
+          "Flags": 0,
           "GameScenePath": "scenes/AF_1x1.scene",
           "MenuScenePath": "scenes/menu.scene",
           "OnComponentDestroy": null,
@@ -173,7 +183,7 @@
     },
     {
       "__guid": "6d4299a0-c34b-43c3-ad35-55fe62ce5eec",
-      "__version": 1,
+      "__version": 2,
       "Flags": 0,
       "Name": "Loger",
       "Position": "-447.783,-527.8403,645.5422",
@@ -182,8 +192,9 @@
       "Tags": "",
       "Enabled": true,
       "NetworkMode": 2,
-      "NetworkInterpolation": true,
+      "NetworkFlags": 0,
       "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
       "OwnerTransfer": 1,
       "Components": [],
       "Children": []
