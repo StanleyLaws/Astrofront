@@ -141,8 +141,9 @@ public sealed class MatchManager : Component, Component.INetworkListener
 
     // 1) Mélange la liste des joueurs pour randomiser QUI va où
     var players = Scene.GetAllComponents<PlayerState>()
-                       .OrderBy( _ => Game.Random.Float() ) // shuffle
-                       .ToList();
+    .OrderBy( _ => Game.Random.Float() )
+    .ToList();
+
 
     int total = players.Count;
 
@@ -180,7 +181,7 @@ public sealed class MatchManager : Component, Component.INetworkListener
         // Téléporter côté propriétaire (client/host) pour que ça prenne partout
         if ( spawn != null )
         {
-            ps.TeleportOwner( spawn.Transform.World.Position, spawn.Transform.World.Rotation );
+            ps.TeleportHost( spawn.Transform.World.Position, spawn.Transform.World.Rotation );
 
             // Log lisible "Pseudo → RED/BLUE"
             var conn = Connection.All.FirstOrDefault( c => c.Id == ps.Network.OwnerId );

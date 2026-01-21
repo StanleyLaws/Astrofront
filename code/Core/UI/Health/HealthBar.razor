@@ -4,28 +4,35 @@
 @inherits Panel
 @namespace Astrofront
 
-<root class="hud-root fullscreen">
-  @if (Local is not null) 
-  {
-    <div class="hp">
-      <div class="hp-fill" style=@($"width:{HealthPct}%")></div>
+@if ( Local is not null && Local.MaxHealth > 0 )
+{
+    <div class="hud-root">
+        <div class="hp">
+            <div class="hp-fill" style="width: @(Local.HealthFraction * 100f)%"></div>
+        </div>
     </div>
-	
-  }
-</root>
+}
 
-@code {
-  private Astrofront.PlayerState _cached;
+@code 
+{
+    private PlayerState _cached;
 
-  Astrofront.PlayerState Local {
-    get {
-      if ( _cached != null && _cached.IsValid ) return _cached;
-      _cached = Scene.GetAllComponents<Astrofront.PlayerState>()
-                     .FirstOrDefault( p => !p.IsProxy );
-      return _cached;
+    private PlayerState Local
+    {
+        get
+        {
+            if ( _cached != null && _cached.IsValid ) return _cached;
+
+            _cached = Scene.GetAllComponents<PlayerState>()
+                .FirstOrDefault( p => !p.IsProxy );
+
+            return _cached;
+        }
     }
-  }
 
-  int HealthPct => Local is null ? 0 : System.Math.Clamp( Local.Health, 0, 100 );
-  protected override int BuildHash() => Local?.Health ?? -1;
+    protected override int BuildHash()
+    {
+        if ( Local is null ) return -1;
+        return (Local.Health * 397) ^ Local.MaxHealth;
+    }
 }
