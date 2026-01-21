@@ -1,32 +1,27 @@
-/* plein écran (remplace inset:0) */
 .fullscreen { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
-
-/* pas d'events souris */
 .hud-root { pointer-events: none; }
 
-/* position bas-gauche + dimensions de la barre (faciles à tweaker) */
 .hp {
-  position: absolute;
-  left: 20px;
-  bottom: 20px;
+	position: absolute;
+	left: 38%;
+	bottom: 25px;
+	width: 200px;
+	height: 20px;
 
-  width: 240px;          /* largeur de la barre */
-  height: 20px;          /* hauteur de la barre */
+	background-color: rgba(0, 0, 0, 0.6);
+	overflow: hidden;
 
-  background: transparent;      /* piste (noire sobre). Mets 'transparent' si tu veux la supprimer */
-  border: none;          /* pas de contour */
-  border-radius: 0;      /* rectangulaire */
-  overflow: hidden;      /* masque le remplissage */
-  box-shadow: none;      /* pas d’ombre */
+	/* ✅ arrondi track */
+	border-radius: 6px; /* au lieu de 999px */
 }
 
-/* remplissage rouge */
 .hp-fill {
-  height: 100%;
-  width: 0%;             /* sera écrasé par le style inline (width:XX%) */
-  background: #e53935;   /* rouge franc; change si tu veux (#ff2d2d p.ex.) */
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  transition: width 0.08s linear; /* petite anim fluide */
+	height: 100%;
+	width: 0%;
+
+	background-color: #e53935;
+	transition: width 0.1s linear;
+
+	/* ✅ arrondi fill */
+	border-radius: 6px;
 }

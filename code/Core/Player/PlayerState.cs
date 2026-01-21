@@ -31,12 +31,25 @@ public sealed class PlayerState : Component
 	}
 
 	protected override void OnUpdate()
-	{
-		if ( IsProxy ) return;
-		if ( LootController.IsUiLockedLocal ) return;
+{
+    if ( IsProxy ) return;
+    if ( LootController.IsUiLockedLocal ) return;
 
-		// IMPORTANT: pas de règles de vie ici (tests enlevés).
-	}
+    // Test: Flashlight => damage 20% (demande au host)
+    if ( Input.Pressed( "Flashlight" ) )
+    {
+        DamageSelfTestHost( 0.05f );
+    }
+}
+
+[Rpc.Host]
+private void DamageSelfTestHost( float fraction )
+{
+    // Host only
+    var amount = (int)(MaxHealth * fraction);
+    AddHealthHost( -amount );
+}
+
 
 	// --- API Host neutre ---
 
