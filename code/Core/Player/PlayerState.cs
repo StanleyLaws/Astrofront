@@ -40,7 +40,7 @@ public sealed class PlayerState : Component
 
 	// --- API Host neutre ---
 
-	public void SetTeamHost( Team t )
+	public void SetTeamHost( Team t ) 
 	{
 		if ( !Networking.IsHost ) return;
 		Team = t;
