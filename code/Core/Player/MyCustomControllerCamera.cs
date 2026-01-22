@@ -56,14 +56,10 @@ public sealed class MyCustomControllerCamera : Component
     {
 		
 		if ( IsProxy ) return;
+		if ( !InputGate.CanGameplayInput ) return;
 
 		if ( _cam == null || !_cam.Enabled ) return;
-
-
-		
-		
-		
-        if ( Target is null ) return;
+		if ( Target is null ) return;
 
         // 1) Lire la souris - INVERSION demandée :
         //    - souris vers le bas => cam MONTE  (pitch++)

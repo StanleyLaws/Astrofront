@@ -70,18 +70,20 @@ public sealed class MyCustomController : Component
 
     protected override void OnUpdate()
     {
-        bool uiLocked = LootController.IsUiLockedLocal;
+        bool canInput = InputGate.CanGameplayInput;
 
-        // Pas de jump-buffer pendant le lock
-        if ( !uiLocked && (Input.Pressed("jump") || Input.Pressed("Jump")) )
-            _jumpPressedFrame = true;
-        else if ( uiLocked )
-            _jumpPressedFrame = false;
+		// Pas de jump-buffer pendant le lock
+		if ( canInput && Input.Pressed( InputActions.Jump ) )
+			_jumpPressedFrame = true;
+		else if ( !canInput )
+			_jumpPressedFrame = false;
+
 
         if ( DebugLogs && Time.Now >= _nextDebugAt )
         {
             _nextDebugAt = Time.Now + DebugEvery;
-            Log.Info($"[CTRL][Update][{GameObject?.Name}] IsProxy={IsProxy} UILock={uiLocked} Pressed={_jumpPressedFrame}");
+            Log.Info($"[CTRL][Update][{GameObject?.Name}] IsProxy={IsProxy} UILock={!canInput} Pressed={_jumpPressedFrame}");
+
         }
     }
 
@@ -89,14 +91,16 @@ public sealed class MyCustomController : Component
     {
         if ( IsProxy ) return;
 
-        bool uiLocked = LootController.IsUiLockedLocal;
+        bool canInput = InputGate.CanGameplayInput;
+
 
         // ---------- Entrées ----------
-        bool f = !uiLocked && Input.Down("forward");
-        bool b = !uiLocked && Input.Down("backward");
-        bool l = !uiLocked && Input.Down("left");
-        bool r = !uiLocked && Input.Down("right");
-        bool wantDuckHold = !uiLocked && (Input.Down("duck") || Input.Down("Duck"));
+        bool f = canInput && Input.Down( InputActions.Forward );
+		bool b = canInput && Input.Down( InputActions.Backward );
+		bool l = canInput && Input.Down( InputActions.Left );
+		bool r = canInput && Input.Down( InputActions.Right );
+		bool wantDuckHold = canInput && Input.Down( InputActions.Duck );
+
 
         float axForward = (f ? 1f : 0f) - (b ? 1f : 0f);
         float axRight   = (r ? 1f : 0f) - (l ? 1f : 0f);
@@ -120,7 +124,7 @@ public sealed class MyCustomController : Component
         var wishVel = wishDir * (MoveSpeed * speedMul);
 
         // Pas de rotation auto pendant l’UI lock
-        if ( !uiLocked && AlignToCameraYaw && wishDir.LengthSquared > 1e-6f )
+        if ( canInput && AlignToCameraYaw && wishDir.LengthSquared > 1e-6f )
         {
             var targetYaw = Rotation.LookAt( fwd, Vector3.Up );
             WorldRotation = Rotation.Lerp( WorldRotation, targetYaw, AlignRotateSpeed * Time.Delta );
@@ -131,11 +135,11 @@ public sealed class MyCustomController : Component
 
         float duckTarget = wantDuckHold ? 1f : 0f;
 
-        if ( uiLocked )
-        {
-            duckTarget = _duck; // on gèle pendant le lock
-        }
-        else
+        if ( !canInput )
+		{
+			duckTarget = _duck; // on gèle pendant le lock
+		}
+		else
         {
             // Si on veut se relever, vérifier plafond (headroom)
             if ( duckTarget < 0.5f && _duck > 0.01f )
@@ -175,12 +179,12 @@ public sealed class MyCustomController : Component
         }
 
         // ---------- Jump : buffer + coyote ----------
-        if ( uiLocked )
-        {
-            _jumpQueuedUntil = float.NegativeInfinity;
-        }
-        else
-        {
+        if ( !canInput )
+		{
+			_jumpQueuedUntil = float.NegativeInfinity;
+		}
+		else
+		{
             if ( _jumpPressedFrame )
             {
                 _jumpQueuedUntil = Time.Now + JumpBuffer;
@@ -212,8 +216,9 @@ public sealed class MyCustomController : Component
         if ( DebugLogs && Time.Now >= _nextDebugAt )
         {
             _nextDebugAt = Time.Now + DebugEvery;
-            Log.Info($"[CTRL][Fixed][{GameObject?.Name}] grounded={_isGrounded} velZ={_velocity.z:F1} now={Time.Now:F2} sinceJump={TimeSinceJump:F2} duck={_duck:F2} allowSnap={allowSnap} UILock={uiLocked}");
-        }
+            Log.Info($"[CTRL][Fixed][{GameObject?.Name}] grounded={_isGrounded} velZ={_velocity.z:F1} now={Time.Now:F2} sinceJump={TimeSinceJump:F2} duck={_duck:F2} allowSnap={allowSnap} UILock={!canInput}");
+
+        } 
     }
 
     private void TryConsumeJump()

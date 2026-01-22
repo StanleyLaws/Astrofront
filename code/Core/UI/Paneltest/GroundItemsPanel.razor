@@ -4,19 +4,19 @@
 @using System.Linq
 @inherits PanelComponent
 
-@if ( !IsOpen )
+@if ( !IsOpen ) 
 {
     return;
-}
+} 
 
-<div class="paneltest-root">
+<div class="ground-items-root">
 
-    <div class="paneltest-header">
-        <span class="paneltest-title">GROUND ITEMS</span>
+    <div class="ground-items-header">
+        <span class="ground-items-title">GROUND ITEMS</span>
     </div>
 
     <!-- Pager toujours visible -->
-    <div class="paneltest-subheader">
+    <div class="ground-items-subheader">
         <div class="pager-controls">
             <div class="page-indicator">@($"{CurrentPage + 1}/{TotalPages}")</div>
 
@@ -39,7 +39,7 @@
             var slot = (globalIndex >= 0 && globalIndex < Slots.Count) ? Slots[globalIndex] : null;
             var hasItem = slot != null && slot.Amount > 0;
 
-            <LootSlot
+            <GroundItemSlot
                 SlotIndex="@globalIndex"
                 Type="@(slot?.Type ?? default)"
                 Amount="@(slot?.Amount ?? 0)"
@@ -49,8 +49,9 @@
 
 </div>
 
+
 @code {
-    public static PanelTestUI Instance { get; private set; }
+    public static GroundItemsPanel Instance { get; private set; }
 
     // ===== Pagination =====
     private const int PageSize = 16; // 4x4
@@ -92,10 +93,11 @@
 
     public List<SlotData> Slots { get; set; } = new();
 
-    public PanelTestUI()
-    {
-        Instance = this;
-    }
+    public GroundItemsPanel()
+	{
+		Instance = this;
+	}
+
 
     private RealTimeSince _sinceRefresh;
 
@@ -109,11 +111,11 @@
         if ( _sinceRefresh > 0.3f )
         {
             _sinceRefresh = 0;
-            PanelTestService.RefreshLootForLocal();
+            GroundItemsService.RefreshLootForLocal();
         }
     }
 
-    public static void Show( PanelTestService.PanelItemDto[] items )
+    public static void Show( GroundItemDto[] items )
     {
         if ( Instance == null ) return;
 
@@ -122,7 +124,7 @@
 
         Instance.ClampPage();
 
-        Log.Info($"[PanelTestUI] Show: items={items?.Length ?? 0}");
+        Log.Info($"[GroundItemsPanel] Show: items={items?.Length ?? 0}");
         Instance.StateHasChanged();
     }
 
@@ -131,20 +133,20 @@
         if ( Instance == null ) return;
 
         Instance.IsOpen = false;
-        Log.Info("[PanelTestUI] Hide()");
+        Log.Info("[GroundItemsPanel] Hide()");
         Instance.StateHasChanged();
 
         UiDragContext.Clear();
     }
 
-    private void ClampPage()
+    private void ClampPage() 
     {
         var max = System.Math.Max( 0, TotalPages - 1 );
         if ( CurrentPage > max ) CurrentPage = max;
         if ( CurrentPage < 0 ) CurrentPage = 0;
-    }
+    } 
 
-    private void BuildSlots( PanelTestService.PanelItemDto[] items )
+    private void BuildSlots( GroundItemDto[] items )
     {
         Slots.Clear();
 

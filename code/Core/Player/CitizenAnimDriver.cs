@@ -110,7 +110,7 @@ public sealed class CitizenAnimDriver : Component
     float wish_x = 0f, wish_y = 0f, wish_speed = 0f, wish_direction = 0f;
     bool hasMoveInput = false;
 
-    if (isLocalOwner && !LootController.IsUiLockedLocal)
+    if (isLocalOwner && !UiModalController.IsUiLockedLocal)
     {
         var mv = Input.AnalogMove; // x=right, y=forward
         var wish2 = new Vector2(mv.x, mv.y);
@@ -147,7 +147,7 @@ public sealed class CitizenAnimDriver : Component
         : 0f;
 
     // UI lock → idle propre
-    if (isLocalOwner && LootController.IsUiLockedLocal)
+    if (isLocalOwner && UiModalController.IsUiLockedLocal)
     {
         wish_x = wish_y = wish_speed = 0f;
         hasMoveInput = false;

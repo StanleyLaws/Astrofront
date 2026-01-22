@@ -3,7 +3,7 @@
 @using Sandbox.UI
 @inherits Panel
 
-<root class="loot-slot @(HasItem ? "has-item" : "empty") @TypeClass @(IsHovered ? "hover" : "")"
+<root class="ground-item-slot @(HasItem ? "has-item" : "empty") @TypeClass @(IsHovered ? "hover" : "")"
       onmouseover=@OnHoverEnter
       onmouseout=@OnHoverLeave>
 
@@ -16,6 +16,7 @@
 
 </root>
 
+
 @code {
     public int SlotIndex { get; set; }
 
@@ -23,7 +24,7 @@
     public ResourceType Type { get; set; }
 
     // ✅ on garde Amount/HasItem
-    public int Amount { get; set; }
+    public int Amount { get; set; } 
     public bool HasItem { get; set; }
 
     public bool IsHovered { get; set; }
@@ -37,8 +38,8 @@
     } : "type-empty";
 
     // ----- état partagé pour le drag -----
-    private static int? DragOriginIndex;
-    private static LootSlot CurrentHoverSlot;
+    private static int? DragOriginSlotIndex;
+    private static GroundItemSlot CurrentHoverSlot;
     private static Vector2 _pressPos;
     private static RealTimeSince _sincePress;
 
@@ -55,7 +56,7 @@
         if ( CurrentHoverSlot == this )
             CurrentHoverSlot = null;
 
-        StateHasChanged();
+        StateHasChanged(); 
     }
 
     protected override void OnMouseDown( MousePanelEvent e )
@@ -70,7 +71,7 @@
 
         if ( e.Button == "mouseleft" && HasItem )
         {
-            DragOriginIndex = SlotIndex;
+            DragOriginSlotIndex = SlotIndex;
         }
     }
 
@@ -90,8 +91,8 @@
 
         if ( btn == "mouseright" )
         {
-            PanelTestUI.Instance?.OnSlotClick( logicalIndex, "mouseright" );
-            DragOriginIndex = null;
+            GroundItemsPanel.Instance?.OnSlotClick( logicalIndex, "mouseright" );
+            DragOriginSlotIndex = null;
             return;
         }
 
@@ -99,23 +100,23 @@
         {
             if ( isClick )
             {
-                PanelTestUI.Instance?.OnSlotClick( logicalIndex, "mouseleft" );
-                DragOriginIndex = null;
+                GroundItemsPanel.Instance?.OnSlotClick( logicalIndex, "mouseleft" );
+                DragOriginSlotIndex = null;
                 return;
             }
 
-            if ( DragOriginIndex.HasValue )
+            if ( DragOriginSlotIndex.HasValue )
             {
-                var from = DragOriginIndex.Value;
+                var from = DragOriginSlotIndex.Value;
                 var to   = logicalIndex;
 
                 if ( from != to )
                 {
-                    PanelTestUI.Instance?.OnDragDrop( from, to );
+                    GroundItemsPanel.Instance?.OnDragDrop( from, to );
                 }
             }
 
-            DragOriginIndex = null;
+            DragOriginSlotIndex = null;
         }
     }
 }

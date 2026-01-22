@@ -1,7 +1,4 @@
 using Sandbox;
-using Astrofront;
-using Sandbox;
-using System.Collections.Generic;
 using System;
 using System.Linq;
 
@@ -15,7 +12,7 @@ namespace Astrofront;
 ///   autour du PlayerState du demandeur et renvoie au bon client.
 /// - UI: PanelTestUI.Show(items) (aucune création de GO UI UI ici).
 /// </summary>
-public sealed class PanelTestService : Component
+public sealed class GroundItemsService : Component
 {
     [Property] public float ScanRadius { get; set; } = 160f;
 
@@ -51,7 +48,7 @@ public static bool HasLootNearbyForLocal()
     if ( scene == null ) return false;
 
     // On récupère n'importe quel PanelTestService non proxy pour connaître le rayon
-    var svc = scene.GetAllComponents<PanelTestService>()?.FirstOrDefault( c => c != null && !c.IsProxy );
+    var svc = scene.GetAllComponents<GroundItemsService>()?.FirstOrDefault( c => c != null && !c.IsProxy );
     if ( svc == null ) return false;
 
     // On réutilise le scan déjà en place
@@ -68,17 +65,17 @@ public static void OpenLootForLocal()
     if ( scene == null ) return;
 
     // Si déjà ouvert, on ne fait rien
-    if ( PanelTestUI.Instance?.IsOpen == true )
+    if ( GroundItemsPanel.Instance?.IsOpen == true )
         return;
 
     // Host local (listen-server) : on scanne et on affiche direct
-    if ( Networking.IsHost )
+    if ( Networking.IsHost ) 
     {
-        var svc = scene.GetAllComponents<PanelTestService>()?.FirstOrDefault( c => c != null && !c.IsProxy );
+        var svc = scene.GetAllComponents<GroundItemsService>()?.FirstOrDefault( c => c != null && !c.IsProxy );
         if ( svc == null ) return;
 
         var items = ScanPickupsAroundLocal( svc.ScanRadius );
-        PanelTestUI.Show( items );
+        GroundItemsPanel.Show( items );
     }
     else
     {
@@ -98,9 +95,9 @@ public static void OpenLootForLocal()
 public static void RequestOpenLootForLocal()
 {
     // Si le panel est déjà ouvert, on le ferme
-    if ( PanelTestUI.Instance?.IsOpen == true )
+    if ( GroundItemsPanel.Instance?.IsOpen == true )
     {
-        PanelTestUI.Hide();
+        GroundItemsPanel.Hide();
         return;
     }
 
@@ -118,22 +115,23 @@ public static void RefreshLootForLocal()
     if ( scene == null ) return;
 
     // Si le panel n'est pas ouvert côté client, on ne fait rien
-    if ( PanelTestUI.Instance == null || !PanelTestUI.Instance.IsOpen )
+    if ( GroundItemsPanel.Instance == null || !GroundItemsPanel.Instance.IsOpen )
         return;
 
     // === HOST (listen-server / dédie qui a aussi un client local) ===
     if ( Networking.IsHost )
     {
         // On récupère un PanelTestService non proxy pour connaître le rayon
-        var svc = scene.GetAllComponents<PanelTestService>()
-                       ?.FirstOrDefault( c => c != null && !c.IsProxy );
+        var svc = scene.GetAllComponents<GroundItemsService>()
+               ?.FirstOrDefault( c => c != null && !c.IsProxy );
+
         if ( svc == null ) return;
 
         // On rescanne autour du joueur local
         var items = ScanPickupsAroundLocal( svc.ScanRadius );
 
         // On rebâtit juste l'UI locale
-        PanelTestUI.Show( items );
+        GroundItemsPanel.Show( items );
     }
     else
     {
@@ -157,10 +155,10 @@ public static void RefreshLootForLocal()
     // ———————————————————————————————————————————————————————————————————
     // Listen-server : scan des ResourcePickup autour du joueur local.
     // ———————————————————————————————————————————————————————————————————
-    private static PanelItemDto[] ScanPickupsAroundLocal( float radius )
+    private static GroundItemDto[] ScanPickupsAroundLocal( float radius )
     {
         var scene = Game.ActiveScene;
-        if ( scene == null ) return Array.Empty<PanelItemDto>();
+        if ( scene == null ) return Array.Empty<GroundItemDto>();
 
         // 1) Origine = PlayerState du client local si dispo
         var me = scene.GetAllComponents<PlayerState>()
@@ -178,7 +176,7 @@ public static void RefreshLootForLocal()
             .Where(p => p != null && p.Amount > 0
                      && (p.Transform.World.Position - origin).LengthSquared <= r2)
             .OrderBy(p => (p.Transform.World.Position - origin).LengthSquared)
-            .Select(p => new PanelItemDto
+            .Select(p => new GroundItemDto
             {
                 Id = p.GameObject.Id,
                 Type = p.Type.ToString(),
@@ -198,13 +196,15 @@ public static void RefreshLootForLocal()
         if ( string.IsNullOrEmpty( requesterId ) ) return;
 
         var scene = Game.ActiveScene;
-        var svc = scene?.GetAllComponents<PanelTestService>()?.FirstOrDefault();
+        var svc = scene?.GetAllComponents<GroundItemsService>()?.FirstOrDefault();
+
         if ( svc == null )
         {
             var go = scene?.CreateObject();
-            go.Name = "PanelTestService";
-            svc = go.Components.Create<PanelTestService>();
-            Log.Info("[PanelTest] Service host créé par RPC.");
+            go.Name = "GroundItemsService";
+			svc = go.Components.Create<GroundItemsService>();
+			Log.Info("[GroundItemsService] Service host créé par RPC.");
+
         }
 
         svc.OpenFor( requesterId );
@@ -232,7 +232,7 @@ public static void RefreshLootForLocal()
             .Where( p => p != null && p.Amount > 0
                       && (p.Transform.World.Position - origin).LengthSquared <= r2 )
             .OrderBy( p => (p.Transform.World.Position - origin).LengthSquared )
-            .Select( p => new PanelItemDto { Id = p.GameObject.Id, Type = p.Type.ToString(), Amount = p.Amount } )
+            .Select( p => new GroundItemDto { Id = p.GameObject.Id, Type = p.Type.ToString(), Amount = p.Amount } )
             .ToArray();
 
         ShowPanelClient( requesterId, items );
@@ -242,12 +242,12 @@ public static void RefreshLootForLocal()
     // CLIENT : ouverture UI pour la cible (filtré par Connection.Local.Id)
     // ———————————————————————————————————————————————————————————————————
     [Rpc.Broadcast]
-    private void ShowPanelClient( string targetId, PanelItemDto[] items )
+    private void ShowPanelClient( string targetId, GroundItemDto[] items )
     {
         if ( Connection.Local == null || Connection.Local.Id.ToString() != targetId )
             return;
 
-        PanelTestUI.Show( items );
+        GroundItemsPanel.Show( items );
     }
 
     // ———————————————————————————————————————————————————————————————————
@@ -255,25 +255,25 @@ public static void RefreshLootForLocal()
     // ———————————————————————————————————————————————————————————————————
     private void EnsureLocalUiExistsIfNeeded()
     {
-        if ( PanelTestUI.Instance != null || !AutoCreateUiIfMissing ) return;
+        if ( GroundItemsPanel.Instance != null || !AutoCreateUiIfMissing ) return;
 
         var scene = Game.ActiveScene;
         if ( scene == null ) return;
 
         var go = scene.CreateObject();
-        go.Name = "PanelTestUI_Auto";
-        go.Components.Create<ScreenPanel>();
-        go.Components.Create<PanelTestUI>();
+		go.Name = "GroundItemsPanel_Auto";
+		go.Components.Create<ScreenPanel>();
+		go.Components.Create<GroundItemsPanel>();
     }
 
-    // ———————————————————————————————————————————————————————————————————
-    // DTO
-    // ———————————————————————————————————————————————————————————————————
-    [Serializable]
-    public struct PanelItemDto
-    {
-        public Guid Id;
-        public string Type;
-        public int Amount;
-    }
+}
+
+
+// DTO au niveau du namespace (plus "nested")
+[Serializable]
+public struct GroundItemDto
+{
+    public Guid Id;
+    public string Type;
+    public int Amount;
 }

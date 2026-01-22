@@ -77,7 +77,7 @@ public sealed class InventorySystem : Component
         if ( IsProxy ) return;
 		
 				// Bloque toute interaction d'inventaire quand une UI modale est ouverte
-		if ( LootController.IsUiLockedLocal )
+		if ( UiModalController.IsUiLockedLocal )
 		{
 			return; // plus de sélection ni drop
 		}

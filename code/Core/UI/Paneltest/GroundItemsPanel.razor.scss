@@ -1,4 +1,4 @@
-.paneltest-root {
+.ground-items-root {
     position: absolute;
 
     right: 60px;
@@ -24,10 +24,8 @@
     pointer-events: all;
 }
 
-
-
 /* HEADER */
-.paneltest-header {
+.ground-items-header {
     width: 100%;
     display: flex;
     flex-direction: row;
@@ -38,35 +36,7 @@
     margin-bottom: 8px;
 }
 
-/* CONTENEUR : page + boutons sur une même ligne */
-.pager-controls {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-end;
-}
-
-/* Indicateur de page à côté des boutons */
-.page-indicator {
-    margin-right: 12px;
-
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.10em;
-    text-transform: uppercase;
-
-    /* Même couleur que le texte des boutons */
-    color: rgba(255, 255, 255, 0.90);
-
-    display: flex;
-    align-items: center;
-}
-
-
-
-
-
-.paneltest-title {
+.ground-items-title {
     font-size: 24px;
     font-weight: 700;
     text-transform: uppercase;
@@ -76,8 +46,8 @@
     color: #ffffff;
 }
 
-/* zone pagination (juste les boutons) */
-.paneltest-subheader {
+/* SOUS-HEADER / PAGINATION */
+.ground-items-subheader {
     width: 560px;
     display: flex;
     flex-direction: row;
@@ -87,11 +57,26 @@
     margin-bottom: 10px;
 }
 
-.paneltest-pager {
+/* CONTENEUR : page + boutons */
+.pager-controls {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    justify-content: center;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.page-indicator {
+    margin-right: 12px;
+
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+
+    color: rgba(255, 255, 255, 0.90);
+
+    display: flex;
+    align-items: center;
 }
 
 .pager-buttons {
@@ -101,9 +86,9 @@
     justify-content: flex-end;
 }
 
-/* boutons */
+/* BOUTONS */
 .page-btn {
-    min-width: 80px;          /* un peu plus large pour éviter la coupe */
+    min-width: 80px;
     padding: 8px 12px;
 
     border-radius: 10px;
@@ -112,21 +97,18 @@
 
     font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.10em;   /* légèrement réduit pour éviter la coupe */
+    letter-spacing: 0.10em;
     text-transform: uppercase;
 
     color: rgba(255, 255, 255, 0.90);
 
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.45);
 
-    /* === CENTRAGE PROPRE (compatible s&box) === */
     display: flex;
-    align-items: center;     /* centre verticalement */
-    justify-content: center; /* centre horizontalement */
+    align-items: center;
+    justify-content: center;
     text-align: center;
 }
-
-
 
 .page-btn:hover {
     border-color: rgba(255, 220, 120, 0.90);
@@ -137,7 +119,7 @@
     opacity: 0.30;
 }
 
-/* grille */
+/* GRILLE */
 .grid-4x4 {
     display: flex;
     flex-direction: row;
@@ -155,5 +137,3 @@
     justify-content: flex-start;
     align-items: flex-start;
 }
-
-

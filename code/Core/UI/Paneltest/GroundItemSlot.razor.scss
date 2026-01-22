@@ -1,4 +1,4 @@
-.loot-slot {
+.ground-item-slot {
   /* IMPORTANT : au lieu de width:25%, on force le layout en flex-basis */
   flex: 0 0 25%;          /* 4 colonnes */
   height: 25%;            /* 4 lignes (si le parent a une hauteur fixe) */
@@ -17,18 +17,21 @@
   position: relative;
   pointer-events: all;
 
-  transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, opacity 0.16s ease;
+  transition: transform 0.16s ease,
+              background-color 0.16s ease,
+              border-color 0.16s ease,
+              opacity 0.16s ease;
 }
 
-.loot-slot.empty {
+.ground-item-slot.empty {
   opacity: 0.35;
 }
 
-.loot-slot.has-item {
+.ground-item-slot.has-item {
   opacity: 1.0;
 }
 
-.loot-slot.hover {
+.ground-item-slot.hover {
   background-color: rgba(20, 20, 30, 0.55);
   border-color: rgba(255, 200, 80, 0.80);
 }
@@ -50,7 +53,7 @@
   pointer-events: none;
 }
 
-.loot-slot.hover .slot-icon {
+.ground-item-slot.hover .slot-icon {
   opacity: 1.0;
   filter: blur(0);
 }

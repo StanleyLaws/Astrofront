@@ -31,7 +31,7 @@ public sealed class PlayerState : Component
 	protected override void OnUpdate()
 {
     if ( IsProxy ) return;
-    if ( LootController.IsUiLockedLocal ) return;
+    if ( UiModalController.IsUiLockedLocal ) return;
 
     // Test: Flashlight => damage 20% (demande au host)
     if ( Input.Pressed( "Flashlight" ) )

@@ -512,18 +512,6 @@
           "OnComponentUpdate": null
         },
         {
-          "__type": "Astrofront.PanelTestUI",
-          "__guid": "4204d52c-d9a8-48d3-86e5-ab42c07c7b4d",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
           "__type": "Astrofront.InventoryHUD",
           "__guid": "139ebfa6-9df7-4fc9-ae52-3f31d8166c9f",
           "__enabled": true,
@@ -562,6 +550,18 @@
         {
           "__type": "Astrofront.HealthRootPanel",
           "__guid": "b2a5441c-2797-48f7-8a49-0902ff3625b9",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.GroundItemsPanel",
+          "__guid": "e49f1823-11ed-48ef-9eac-147f73dd56c3",
           "__enabled": true,
           "Flags": 0,
           "OnComponentDestroy": null,
@@ -618,34 +618,6 @@
           "SecondsPerTick": 60
         },
         {
-          "__type": "Astrofront.LootController",
-          "__guid": "48b7cd2d-e67e-4f32-82da-58f16288afd9",
-          "__enabled": true,
-          "Flags": 0,
-          "ListenInput": true,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
-          "__type": "Astrofront.PanelTestService",
-          "__guid": "9afbf4b0-836d-4e4c-bbeb-fbd840188b69",
-          "__enabled": true,
-          "Flags": 0,
-          "AutoCreateUiIfMissing": true,
-          "ListenInput": true,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "ScanRadius": 160
-        },
-        {
           "__type": "Astrofront.InventorySystem",
           "__guid": "e2c34c52-c2f4-481a-8220-0ea2da65868c",
           "__enabled": true,
@@ -685,6 +657,34 @@
           "OnComponentFixedUpdate": null,
           "OnComponentStart": null,
           "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.UiModalController",
+          "__guid": "9151f431-e409-4755-b32f-23aab196f774",
+          "__enabled": true,
+          "Flags": 0,
+          "ListenInput": true,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.GroundItemsService",
+          "__guid": "cd697a59-fb17-40c8-abcd-d15d38b37dd4",
+          "__enabled": true,
+          "Flags": 0,
+          "AutoCreateUiIfMissing": true,
+          "ListenInput": true,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "ScanRadius": 160
         }
       ],
       "Children": []

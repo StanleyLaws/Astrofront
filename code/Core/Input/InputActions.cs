@@ -10,7 +10,7 @@ namespace Astrofront;
 public static class InputActions
 {
     // UI / Menus
-    public const string InventoryToggle = "inventory";   // ex: touche I
+    public const string InventoryToggle = "inv";   // ex: touche I
     public const string Chat = "Chat";
     public const string Scoreboard = "Scoreboard";
 
@@ -28,4 +28,17 @@ public static class InputActions
     public const string Slot3 = "Slot3";
     public const string Slot4 = "Slot4";
     public const string Slot5 = "Slot5";
+	
+	public const string Jump = "Jump";
+	public const string Duck = "Duck";
+
+	public const string Forward  = "forward";
+	public const string Backward = "backward";
+	public const string Left     = "left";
+	public const string Right    = "right";
+
+	
+	
+	
+	
 }

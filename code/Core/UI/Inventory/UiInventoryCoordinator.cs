@@ -4,26 +4,22 @@ public static class UiInventoryCoordinator
 {
     /// <summary>
     /// Appelé depuis UiInteractionController lorsque le joueur presse "inv".
+    /// Ouvre toujours le panel "ground items" + l'inventaire interactif.
     /// </summary>
     public static void HandleInvPressed()
     {
-        // Vérifie si des ressources sont lootables autour du joueur
-        bool hasLootNearby = PanelTestService.HasLootNearbyForLocal();
+        bool anyOpen =
+            (InventoryManagePanel.Instance?.IsOpen == true) ||
+            (GroundItemsPanel.Instance?.IsOpen == true);
 
-        if ( hasLootNearby )
+        if ( anyOpen )
         {
-            // On ouvre le panel de loot + le panel d'inventaire interactif
-            PanelTestService.OpenLootForLocal();
+            UiModalController.CloseAllUi(); // ferme panels + clear drag
+            return;
+        }
 
-            InventoryManagePanel.Show();
-        }
-        else
-        {
-            // On toggle uniquement l'inventaire interactif
-            if ( InventoryManagePanel.Instance?.IsOpen == true )
-                InventoryManagePanel.Hide();
-            else
-                InventoryManagePanel.Show();
-        }
+        // Ouvre toujours le loot panel (même vide) + l'inventaire
+        GroundItemsService.OpenLootForLocal();
+        InventoryManagePanel.Show();
     }
 }
