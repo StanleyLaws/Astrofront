@@ -15,20 +15,18 @@ public sealed class PlayerState : Component
 
 	[Sync( SyncFlags.FromHost )] public int Kills { get; private set; }
 
-	private CameraComponent _camera;
 
 	public float HealthFraction => MaxHealth <= 0 ? 0f : (float)Health / MaxHealth;
 	public bool IsAlive => Health > 0;
 
 	protected override void OnStart()
-	{
-		if ( !IsProxy )
-			GameObject.Tags.Add( "localplayer" );
+{
+    if ( !IsProxy )
+        GameObject.Tags.Add( "localplayer" );
 
-		_camera = Components.Get<CameraComponent>( FindMode.EverythingInSelfAndDescendants );
-		if ( _camera != null )
-			_camera.Enabled = !IsProxy;
-	}
+    // La caméra sera gérée uniquement par OwnerOnlyCamera (source unique)
+}
+
 
 	protected override void OnUpdate()
 {

@@ -33,10 +33,18 @@ public sealed class MyCustomControllerCamera : Component
     private float _pitchDeg;  // en degrés
     private Vector3 _goalPos;
     private Rotation _goalRot;
+	
+	private CameraComponent _cam;
+
 
     protected override void OnStart()
     {
-        if ( Target is null ) return;
+		
+		_cam = Components.Get<CameraComponent>( FindMode.EverythingInSelfAndDescendants );
+		if ( _cam == null ) return;
+
+		if ( Target is null ) return;
+
 
         // On démarre au MILIEU de l’arc arrière du joueur :
         float frontYaw = GetYawDeg( Target.WorldRotation.Forward );
@@ -46,6 +54,15 @@ public sealed class MyCustomControllerCamera : Component
 
     protected override void OnUpdate()
     {
+		
+		if ( IsProxy ) return;
+
+		if ( _cam == null || !_cam.Enabled ) return;
+
+
+		
+		
+		
         if ( Target is null ) return;
 
         // 1) Lire la souris - INVERSION demandée :
