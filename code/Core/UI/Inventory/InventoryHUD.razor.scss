@@ -1,183 +1,133 @@
+/* ============================================================
+   INVENTORY HUD — SAFE CSS (NO SCSS, NO FLEX)
+   ============================================================ */
+
+/* ================= ROOT ================= */
+
 .invquick-root {
   position: absolute;
   left: 50%;
-  bottom: 70px;
+  bottom: 70px;            /* ⇦ position verticale HUD */
   transform: translateX(-50%);
   z-index: 5000;
-
   pointer-events: none;
-  
 
-  /* fade global */
   opacity: 0;
   transition: opacity 0.18s ease;
 }
 
-.invquick-root.visible {
-  opacity: 1;
-}
+.invquick-root.visible { opacity: 1; }
+.invquick-root.hidden  { opacity: 0; }
 
-.invquick-root.hidden {
-  opacity: 0;
-}
+/* ================= BAR ================= */
 
 .invquick-bar {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  justify-content: center;
+  position: absolute;
+  left: 50%;
+  bottom: 0px;
+  transform: translateX(-50%);
+
+  width: 540px;           /* ⇦ largeur totale (5 slots) */
+  height: 120px;
 }
+
+/* ================= SLOT ================= */
 
 .invquick-slot {
-  width: 92px;
+  position: absolute;
+  width: 92px;            /* ⇦ taille slot */
   height: 92px;
 
-  margin: 0 10px;
-
   border-radius: 14px;
-  background-color: rgba(10, 10, 16, 0.30);
-  border: 2px solid rgba(255, 255, 255, 0.10);
 
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  background-color: rgba(10, 10, 16, 0.30); /* ⇦ fond slot */
+  opacity: 0.55;             /* ⇦ opacité slot normal */
 
-  position: relative;
-
-  transition: opacity 0.16s ease, transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease,
+    background-color 0.16s ease,
+    box-shadow 0.16s ease;
 }
+
+/* positions slots (92 + 20 = 112px) */
+.invquick-slot:nth-child(1) { left:   0px; top: 0px; }
+.invquick-slot:nth-child(2) { left: 112px; top: 0px; }
+.invquick-slot:nth-child(3) { left: 224px; top: 0px; }
+.invquick-slot:nth-child(4) { left: 336px; top: 0px; }
+.invquick-slot:nth-child(5) { left: 448px; top: 0px; }
 
 .invquick-slot.empty {
-  opacity: 0.35;
+  opacity: 0.35;          /* ⇦ slot vide */
 }
 
-/* Selected : jaune OK */
+/* ================= SELECTED ================= */
+
 .invquick-slot.selected {
-  transform: translateY(-6px);
-  background-color: rgba(20, 20, 30, 0.55);
-  border-color: rgba(255, 200, 80, 0.85);
+  transform: translateY(-6px);       /* ⇦ lift */
+  background-color: rgba(20, 20, 30, 0.55);         /* ⇦ fond sélection */
   opacity: 1.0;
+
+  /* ⇦ contour + glow (remplace border) */
+  box-shadow:
+    0 0 0 2px #ffc850,
+    0 0 12px #ffc850;
 }
 
-/* Recent : petit lift MAIS PAS JAUNE */
-.invquick-slot.recent {}
+/* ================= ICON ================= */
 
 .slot-icon {
-  width: 100px;
-  height: 100px;
-  
-  margin-top: -10px;
-  margin-left: 4px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
 
-  /* plus de cadre */
-  background-color: transparent;
-  border-radius: 0;
+  width: 100px;           /* ⇦ taille icône */
+  height: 100px;
+
+  transform: translate(-50%, -50%);
+  margin-top: -5px;       /* ⇦ ajuste vertical */
+  margin-left: 2px;       /* ⇦ ajuste horizontal */
 
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
 
-  opacity: 0.95;
+  opacity: 0.65;          /* ⇦ opacité icône */
+  filter: blur(0.35px);   /* ⇦ flou icône */
 }
 
-/* Par défaut : icônes un peu atténuées */
-.invquick-slot .slot-icon {
-  opacity: 0.65;
-  filter: blur(0.35px);
-}
-
-/* Icône nette et pleine sur le slot sélectionné */
 .invquick-slot.selected .slot-icon {
   opacity: 1.0;
   filter: blur(0);
 }
 
+/* ================= STACK ================= */
 
-/* Nom: centre strictement au centre du slot */
-/* Nom sous la case (en dehors), centré parfaitement */
-.slot-name {
-  position: absolute;
-  left: 0;
-  right: 0;
-
-  top: 100%;            /* juste sous le slot */
-  margin-top: 6px;      /* espace sous la case */
-
-  height: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-
-  color: rgba(255, 255, 255, 0.90);
-
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-
-  opacity: 0;
-  transition: opacity 0.12s ease;
-}
-
-/* visible uniquement sur selected */
-.invquick-slot.selected .slot-name {
-  opacity: 1;
-}
-
-
-.invquick-slot.selected .slot-name {
-  opacity: 1;
-}
-
-
-/* visible uniquement sur selected */
-.invquick-slot.selected .slot-name {
-  opacity: 1;
-}
-
-/* petit compteur stack (haut gauche) */
 .slot-stack {
   position: absolute;
   top: 6px;
   left: 10px;
 
-  font-size: 14px;      /* plus gros */
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.04em;
 
-  color: rgba(140, 220, 255, 0.95);
-  text-shadow: 0 0 6px rgba(0, 120, 200, 0.6);
+  color: #8cdcff;
+  text-shadow: 0 0 6px #0078c8;
 
   pointer-events: none;
 
   transform: scale(0.96);
   opacity: 0.92;
-  transition: transform 0.14s ease, opacity 0.14s ease;
 }
 
-/* petit "pop" sur le slot sélectionné */
 .invquick-slot.selected .slot-stack {
   transform: scale(1.10);
-  opacity: 1;
+  opacity: 1.0;
 }
 
+/* ================= INDEX ================= */
 
-
-
-
-/* le nom apparaît uniquement sur le slot actif */
-.invquick-slot.selected .slot-name {
-  opacity: 1;
-}
-
-
-
-/* index en bas au centre */
 .slot-index {
   position: absolute;
   left: 50%;
@@ -186,53 +136,66 @@
 
   font-size: 13px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.80);
+  color: white;
+  opacity: 0.80;
 }
- 
 
-/* Icônes par type */
-.type-hands .slot-icon   { background-image: url("/ui/icons/hands.png"); }
-.type-stellium .slot-icon{ background-image: url("/ui/icons/stellium.png"); }
-.type-plasma .slot-icon  { background-image: url("/ui/icons/plasma.png"); }
-.type-alloy .slot-icon   { background-image: url("/ui/icons/alloy.png"); }
-.type-generic .slot-icon { background-image: url("/ui/icons/item.png"); }
-.type-empty .slot-icon   { background-image: url("/ui/icons/empty.png"); opacity: 0.25; }
+/* ================= ITEM NAME ================= */
+
+.slot-name {
+  position: absolute;
+  left: 91%;
+  top: 100%;
+  transform: translateX(-50%);
+
+  margin-top: 6px;        /* ⇦ distance sous le slot */
+  width: 120px;           /* ⇦ largeur label */
+
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  color: white;
+  text-align: center;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  opacity: 0;
+}
+
+.invquick-slot.selected .slot-name {
+  opacity: 1;
+}
 
 
+/* ================= WEIGHT BAR ================= */
 
-/* ====== WEIGHT BAR (verticale au-dessus du HUD) ====== */
 .invquick-weight {
   position: absolute;
   left: 50%;
-  bottom: -50px;              /* sous l’inventaire (ajuste) */
+  bottom: -50px;
   transform: translateX(-50%);
-
   pointer-events: none;
-
-  display: flex;
-  flex-direction: row;        /* barre + texte côte à côte */
-  align-items: center;
-  justify-content: center;
-
   opacity: 0.95;
 }
 
+.weight-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
 
-
-/* Piste */
-.weight-track {
-  position: relative;
-
-  width: 8px;                 /* plus fin */
-  height: 64px;               /* plus haut */
+  width: 8px;
+  height: 64px;
 
   border-radius: 999px;
-  background-color: rgba(10, 10, 16, 0.30);
-  border: 2px solid rgba(255, 255, 255, 0.16);
+  background-color: #0a0a10;
+  opacity: 0.55;
 
   overflow: hidden;
 }
-
 
 .weight-fill {
   position: absolute;
@@ -240,35 +203,18 @@
   bottom: 0;
   width: 100%;
 
-  /* Bleu plus profond, moins "néon" */
-  background-color: rgba(90, 150, 255, 0.95);
-
-  /* Glow plus subtil */
-  box-shadow: 0 0 8px rgba(90, 150, 255, 0.35);
-
-  transition: height 0.12s ease;
+  background-color: #5a96ff;
 }
 
-
-
-
 .weight-text {
+  position: absolute;
+  left: 16px;
+  bottom: 18px;
 
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.06em;
 
-  /* Texte bleu clair, lisible et cohérent avec la barre */
-  color: rgba(160, 210, 255, 0.95);
-
-  /* Léger glow doux (pas gris) */
-  text-shadow: 0 0 6px rgba(90, 150, 255, 0.35);
-
-  padding: 2px 6px;
-  border-radius: 8px;
+  color: #a0d2ff;
+  text-shadow: 0 0 6px #5a96ff;
 }
-
-
-
-
-

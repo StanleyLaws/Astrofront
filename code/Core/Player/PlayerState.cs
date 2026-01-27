@@ -9,7 +9,7 @@ public sealed class PlayerState : Component
 {
 	[Sync( SyncFlags.FromHost )] public Team Team { get; private set; } = Team.None;
 
-	// Neutre (Core) : chaque mode peut choisir ses valeurs.
+	// Neutre (Core) : chaque mode peut choisir ses valeurs. 
 	[Sync( SyncFlags.FromHost )] public int MaxHealth { get; private set; } = 100;
 	[Sync( SyncFlags.FromHost )] public int Health { get; private set; } = 100;
 

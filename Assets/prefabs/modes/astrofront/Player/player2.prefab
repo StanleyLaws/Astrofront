@@ -102,22 +102,6 @@
         "OnComponentUpdate": null
       },
       {
-        "__type": "Astrofront.InventorySystem",
-        "__guid": "0a913dc9-5510-4218-bdf7-62b7c0a67706",
-        "__enabled": true,
-        "Flags": 0,
-        "CapacitySpace": 10,
-        "OnComponentDestroy": null,
-        "OnComponentDisabled": null,
-        "OnComponentEnabled": null,
-        "OnComponentFixedUpdate": null,
-        "OnComponentStart": null,
-        "OnComponentUpdate": null,
-        "ResourceMaxStack": 999999,
-        "SelectedIndex": 0,
-        "SlotCount": 5
-      },
-      {
         "__type": "Astrofront.PlayerAppearance",
         "__guid": "b32428b8-93e2-40ad-a530-15d5554e252e",
         "__enabled": true,
@@ -128,6 +112,33 @@
           "go": "c485ec6b-fafa-49fa-94f3-39a587c6bc4f",
           "component_type": "SkinnedModelRenderer"
         },
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null
+      },
+      {
+        "__type": "Astrofront.InventoryComponent",
+        "__guid": "673942e8-374a-4f59-b7c6-05a1ecaafd94",
+        "__enabled": true,
+        "Flags": 0,
+        "CapacitySpace": 10,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "SelectedIndex": 0,
+        "SlotCount": 5
+      },
+      {
+        "__type": "Astrofront.InventoryInput",
+        "__guid": "cbfc2405-0108-478e-b932-d6795f01974e",
+        "__enabled": true,
+        "Flags": 0,
         "OnComponentDestroy": null,
         "OnComponentDisabled": null,
         "OnComponentEnabled": null,

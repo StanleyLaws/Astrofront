@@ -512,42 +512,6 @@
           "OnComponentUpdate": null
         },
         {
-          "__type": "Astrofront.InventoryHUD",
-          "__guid": "139ebfa6-9df7-4fc9-ae52-3f31d8166c9f",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
-          "__type": "Astrofront.InventoryManagePanel",
-          "__guid": "e52983b3-8c6c-4b6f-94e6-84a80b7127c6",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
-          "__type": "Astrofront.HeldItemCursor",
-          "__guid": "0888b105-c9aa-4cf8-bd2c-e40f90a5ec15",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
           "__type": "Astrofront.HealthRootPanel",
           "__guid": "b2a5441c-2797-48f7-8a49-0902ff3625b9",
           "__enabled": true,
@@ -560,8 +524,44 @@
           "OnComponentUpdate": null
         },
         {
+          "__type": "Astrofront.InventoryHUD",
+          "__guid": "9e32c08a-95ac-4afd-8639-9c485d6caccc",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.InventoryManagePanel",
+          "__guid": "917d509f-b993-49b1-afd6-3ff774144349",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
           "__type": "Astrofront.GroundItemsPanel",
-          "__guid": "e49f1823-11ed-48ef-9eac-147f73dd56c3",
+          "__guid": "3c4f477a-1f7e-4278-a762-949a9d979b53",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.HeldItemCursor",
+          "__guid": "e1ebca09-659d-4c79-a64d-6659da5b2115",
           "__enabled": true,
           "Flags": 0,
           "OnComponentDestroy": null,
@@ -618,22 +618,6 @@
           "SecondsPerTick": 60
         },
         {
-          "__type": "Astrofront.InventorySystem",
-          "__guid": "e2c34c52-c2f4-481a-8220-0ea2da65868c",
-          "__enabled": true,
-          "Flags": 0,
-          "CapacitySpace": 10,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "ResourceMaxStack": 999999,
-          "SelectedIndex": 0,
-          "SlotCount": 5
-        },
-        {
           "__type": "Astrofront.UiInteractionController",
           "__guid": "d98bf098-9d5f-445f-b9f5-f158569dbb87",
           "__enabled": true,
@@ -646,24 +630,10 @@
           "OnComponentUpdate": null
         },
         {
-          "__type": "Astrofront.UiLootInventoryBridge",
-          "__guid": "6a295e2d-9c7b-45b9-ac6f-17865ee723fb",
-          "__enabled": true,
-          "Flags": 0,
-          "LootRadius": 160,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
           "__type": "Astrofront.UiModalController",
           "__guid": "9151f431-e409-4755-b32f-23aab196f774",
           "__enabled": true,
           "Flags": 0,
-          "ListenInput": true,
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
@@ -672,19 +642,19 @@
           "OnComponentUpdate": null
         },
         {
-          "__type": "Astrofront.GroundItemsService",
-          "__guid": "cd697a59-fb17-40c8-abcd-d15d38b37dd4",
+          "__type": "Astrofront.InventoryComponent",
+          "__guid": "a7529c8d-ec1f-4121-a7b8-d2ae50173d30",
           "__enabled": true,
           "Flags": 0,
-          "AutoCreateUiIfMissing": true,
-          "ListenInput": true,
+          "CapacitySpace": 10,
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
           "OnComponentFixedUpdate": null,
           "OnComponentStart": null,
           "OnComponentUpdate": null,
-          "ScanRadius": 160
+          "SelectedIndex": 0,
+          "SlotCount": 5
         }
       ],
       "Children": []
@@ -735,54 +705,6 @@
           },
           "RenderType": "On",
           "Tint": "0.86047,0.05603,0.05603,1"
-        },
-        {
-          "__type": "Astrofront.StationResourceGenerator",
-          "__guid": "ef8940d6-5ed7-4919-a64a-f827564f69cf",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "Resources": [
-            {
-              "Type": "Stellium",
-              "TickSeconds": 5,
-              "AmountPerTick": 1,
-              "MaxStoredTicks": 30
-            },
-            {
-              "Type": "Plasma",
-              "TickSeconds": 12,
-              "AmountPerTick": 1,
-              "MaxStoredTicks": 20
-            },
-            {
-              "Type": "Alloy",
-              "TickSeconds": 20,
-              "AmountPerTick": 1,
-              "MaxStoredTicks": 15
-            }
-          ],
-          "Team": "Red",
-          "UseConnectionKeyForTests": true
-        },
-        {
-          "__type": "Astrofront.DispenserUse",
-          "__guid": "64bad6ee-32d7-4a8d-9748-580af70adc8a",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "UseCooldown": 0.5,
-          "UseRadius": 160
         }
       ],
       "Children": [
@@ -825,35 +747,6 @@
               },
               "RenderScale": 1,
               "VerticalAlign": "Center"
-            },
-            {
-              "__type": "Astrofront.DispenserPrompt",
-              "__guid": "bac9c7f1-adba-492e-a830-b4aea38d44da",
-              "__enabled": true,
-              "Flags": 0,
-              "OnComponentDestroy": null,
-              "OnComponentDisabled": null,
-              "OnComponentEnabled": null,
-              "OnComponentFixedUpdate": null,
-              "OnComponentStart": null,
-              "OnComponentUpdate": null
-            },
-            {
-              "__type": "DispenserPanel",
-              "__guid": "2e308e52-75bc-4e7d-8e9c-d29644e53417",
-              "__enabled": true,
-              "Flags": 0,
-              "ForwardOffset": 90,
-              "Hover": true,
-              "HoverAmplitude": 4,
-              "HoverSpeed": 2,
-              "OnComponentDestroy": null,
-              "OnComponentDisabled": null,
-              "OnComponentEnabled": null,
-              "OnComponentFixedUpdate": null,
-              "OnComponentStart": null,
-              "OnComponentUpdate": null,
-              "VerticalOffset": 15
             }
           ],
           "Children": []

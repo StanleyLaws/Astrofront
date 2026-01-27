@@ -1,7 +1,6 @@
 .ground-item-slot {
-  /* IMPORTANT : au lieu de width:25%, on force le layout en flex-basis */
-  flex: 0 0 25%;          /* 4 colonnes */
-  height: 25%;            /* 4 lignes (si le parent a une hauteur fixe) */
+  flex: 0 0 25%;
+  height: 25%;
 
   display: flex;
   align-items: center;
@@ -23,33 +22,26 @@
               opacity 0.16s ease;
 }
 
-.ground-item-slot.empty {
-  opacity: 0.35;
-}
-
-.ground-item-slot.has-item {
-  opacity: 1.0;
-}
+.ground-item-slot.empty { opacity: 0.35; }
+.ground-item-slot.has-item { opacity: 1.0; }
 
 .ground-item-slot.hover {
   background-color: rgba(20, 20, 30, 0.55);
   border-color: rgba(255, 200, 80, 0.80);
 }
 
-.slot-icon {
+/* ICON (image injectée par C#) */
+.ground-item-slot .slot-icon {
   width: 86px;
   height: 86px;
-
-  background-color: transparent;
-  border-radius: 0;
 
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
 
+  background-image: none; /* important */
   opacity: 0.65;
   filter: blur(0.35px);
-
   pointer-events: none;
 }
 
@@ -58,6 +50,7 @@
   filter: blur(0);
 }
 
+/* STACK */
 .slot-stack {
   position: absolute;
   top: 10px;
@@ -69,23 +62,5 @@
 
   color: rgba(160, 210, 255, 0.95);
   text-shadow: 0 0 6px rgba(90, 150, 255, 0.35);
-
   pointer-events: none;
 }
-
-/* bordure uniforme (les classes type servent juste aux icônes) */
-.type-stellium,
-.type-plasma,
-.type-alloy,
-.type-generic,
-.type-empty {
-  border-color: rgba(255, 255, 255, 0.10);
-}
-
-/* Icônes par type */
-.type-stellium .slot-icon { background-image: url("/ui/icons/stellium.png"); }
-.type-plasma   .slot-icon { background-image: url("/ui/icons/plasma.png"); }
-.type-alloy    .slot-icon { background-image: url("/ui/icons/alloy.png"); }
-.type-generic  .slot-icon { background-image: url("/ui/icons/item.png"); }
-
-.type-empty .slot-icon { background-image: none; }

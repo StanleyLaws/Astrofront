@@ -3,41 +3,52 @@
 @using Sandbox.UI
 @inherits Panel
 
-<root class="ground-item-slot @(HasItem ? "has-item" : "empty") @TypeClass @(IsHovered ? "hover" : "")"
+<root class="ground-item-slot @(HasItem ? "has-item" : "empty") @ItemClass @(IsHovered ? "hover" : "")"
       onmouseover=@OnHoverEnter
       onmouseout=@OnHoverLeave>
 
-    <div class="slot-icon"></div>
+    <div class="slot-icon" style="@IconStyle"></div>
 
     @if ( HasItem && Amount > 0 )
     {
         <div class="slot-stack">@($"x{Amount}")</div>
     }
-
 </root>
 
-
-@code {
+@code
+{
     public int SlotIndex { get; set; }
 
-    // ✅ NOUVEAU : type affiché (pour l’icône)
-    public ResourceType Type { get; set; }
-
-    // ✅ on garde Amount/HasItem
-    public int Amount { get; set; } 
+    public string ItemId { get; set; } = "";
+    public int Amount { get; set; }
     public bool HasItem { get; set; }
 
     public bool IsHovered { get; set; }
 
-    private string TypeClass => HasItem ? Type switch
-    {
-        ResourceType.Stellium => "type-stellium",
-        ResourceType.Plasma   => "type-plasma",
-        ResourceType.Alloy    => "type-alloy",
-        _                     => "type-generic"
-    } : "type-empty";
+    private string ItemClass => (HasItem && !string.IsNullOrEmpty(ItemId) && Amount > 0)
+    ? ItemRegistry.GetUiClass( ItemId )
+    : "type-empty";
 
-    // ----- état partagé pour le drag -----
+
+    private string IconStyle
+	{
+		get
+		{
+			// ✅ reset dur quand vide (empêche l’icône fantôme)
+			if ( !HasItem || string.IsNullOrEmpty( ItemId ) || Amount <= 0 )
+				return "background-image: none;";
+
+			var icon = ItemRegistry.Get( ItemId )?.Icon;
+
+			// ✅ pas de fallback (comme tu veux)
+			if ( string.IsNullOrEmpty( icon ) )
+				return "background-image: none;";
+
+			return $"background-image: url('{icon}');";
+		}
+	}
+
+
     private static int? DragOriginSlotIndex;
     private static GroundItemSlot CurrentHoverSlot;
     private static Vector2 _pressPos;
@@ -56,7 +67,7 @@
         if ( CurrentHoverSlot == this )
             CurrentHoverSlot = null;
 
-        StateHasChanged(); 
+        StateHasChanged();
     }
 
     protected override void OnMouseDown( MousePanelEvent e )
@@ -66,13 +77,11 @@
         if ( e.Button != "mouseleft" && e.Button != "mouseright" )
             return;
 
-        _pressPos   = Mouse.Position;
+        _pressPos = Mouse.Position;
         _sincePress = 0;
 
         if ( e.Button == "mouseleft" && HasItem )
-        {
             DragOriginSlotIndex = SlotIndex;
-        }
     }
 
     protected override void OnMouseUp( MousePanelEvent e )
@@ -86,7 +95,7 @@
         var target = CurrentHoverSlot ?? this;
         var logicalIndex = target.SlotIndex;
 
-        var dist    = (Mouse.Position - _pressPos).Length;
+        var dist = (Mouse.Position - _pressPos).Length;
         var isClick = dist < 5f && _sincePress < 0.4f;
 
         if ( btn == "mouseright" )
@@ -108,12 +117,10 @@
             if ( DragOriginSlotIndex.HasValue )
             {
                 var from = DragOriginSlotIndex.Value;
-                var to   = logicalIndex;
+                var to = logicalIndex;
 
                 if ( from != to )
-                {
                     GroundItemsPanel.Instance?.OnDragDrop( from, to );
-                }
             }
 
             DragOriginSlotIndex = null;

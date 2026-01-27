@@ -5,32 +5,44 @@
 @inherits PanelComponent
 
 <div class="heldcursor-root">
-    <div class="heldcursor-slot @TypeClass">
-        <div class="slot-icon"></div>
+    <div class="heldcursor-slot" style="@SlotStyle">
+        <div class="slot-icon" style="@IconStyle"></div>
         <div class="slot-stack">@AmountLabel</div>
     </div>
 </div>
 
 @code
 {
+    private const float TargetScreenSize = 72f; // taille voulue en pixels écran
+    private float _uiSize;                      // taille convertie en UI units
+
+    private string HeldId => UiDragContext.HeldItemId;
     private int HeldAmount => UiDragContext.HeldAmount;
 
     private string AmountLabel => HeldAmount > 0 ? $"x{HeldAmount}" : "";
 
-    private string TypeClass
+    private string SlotStyle => _uiSize > 0 ? $"width:{_uiSize}px;height:{_uiSize}px;" : "";
+
+    private string IconStyle
     {
         get
         {
-            if ( !UiDragContext.HeldType.HasValue )
-                return "type-empty";
+            // reset + taille
+            var baseStyle = _uiSize > 0 ? $"width:{_uiSize}px;height:{_uiSize}px;background-image:none;" : "background-image:none;";
 
-            return UiDragContext.HeldType.Value switch
-            {
-                ResourceType.Stellium => "type-stellium",
-                ResourceType.Plasma   => "type-plasma",
-                ResourceType.Alloy    => "type-alloy",
-                _                     => "type-generic"
-            };
+            if ( !UiDragContext.HasItem )
+                return baseStyle;
+
+            // HANDS (si tu l'utilises)
+            if ( HeldId == "hands" )
+                return baseStyle + "background-image:url('/ui/icons/hands.png');";
+
+            // item normal => Icon depuis itemdef
+            var icon = ItemRegistry.GetIcon( HeldId );
+            if ( string.IsNullOrEmpty( icon ) )
+                return baseStyle;
+
+            return baseStyle + $"background-image:url('{icon}');";
         }
     }
 
@@ -41,30 +53,27 @@
         if ( Panel == null )
             return;
 
-        // Rien dans la main → cacher
-        if ( !UiDragContext.HasItem || !UiDragContext.HeldType.HasValue || UiDragContext.HeldAmount <= 0 )
+        if ( !UiDragContext.HasItem )
         {
             Panel.Style.Display       = DisplayMode.None;
             Panel.Style.PointerEvents = PointerEvents.None;
             return;
         }
 
-        // Visible
         Panel.Style.Display       = DisplayMode.Flex;
         Panel.Style.Position      = PositionMode.Absolute;
         Panel.Style.PointerEvents = PointerEvents.None;
         Panel.Style.ZIndex        = 999;
 
-        // Positionner sous la souris
-        var mouse  = Mouse.Position;
-var scale  = Panel.ScaleFromScreen;
-var offset = new Vector2( -36f, -36f );
+        // ✅ position stable toutes résolutions
+        float s = Panel.ScaleFromScreen;
 
-var p = (mouse + offset) * scale;
+        var mouse = Mouse.Position;
+        Panel.Style.Left = mouse.x * s;
+        Panel.Style.Top  = mouse.y * s;
 
-Panel.Style.Left = p.x;
-Panel.Style.Top  = p.y;
-
+        // ✅ taille visuelle constante (en pixels écran)
+        _uiSize = TargetScreenSize * s;
 
         StateHasChanged();
     }

@@ -1,0 +1,11 @@
+{
+  "Id": "core.test.item",
+  "DisplayName": "Test Item",
+  "UiClass": "Type-generic",
+  "Icon": "ui/icons/alloy.png",
+  "WorldModel": "models/citizen_props/crate01/piece.vmdl_c",
+  "MaxStack": 9999,
+  "SpaceCost": 1,
+  "__references": [],
+  "__version": 0
+}

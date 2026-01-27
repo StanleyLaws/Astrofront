@@ -1,13 +1,12 @@
 @namespace Astrofront
 @using Sandbox
-@using System
 @using System.Linq
 @inherits PanelComponent
 
-@if ( !IsOpen ) 
+@if ( !IsOpen )
 {
     return;
-} 
+}
 
 <div class="ground-items-root">
 
@@ -15,47 +14,71 @@
         <span class="ground-items-title">GROUND ITEMS</span>
     </div>
 
-    <!-- Pager toujours visible -->
     <div class="ground-items-subheader">
         <div class="pager-controls">
             <div class="page-indicator">@($"{CurrentPage + 1}/{TotalPages}")</div>
 
             <div class="pager-buttons">
-                <div class="page-btn @(CurrentPage <= 0 ? "disabled" : "")"
-                     @onclick="PrevPage">Prev</div>
-
-                <div class="page-btn @(CurrentPage >= TotalPages - 1 ? "disabled" : "")"
-                     @onclick="NextPage">Next</div>
+                <div class="page-btn @(CurrentPage <= 0 ? "disabled" : "")" @onclick="PrevPage">Prev</div>
+                <div class="page-btn @(CurrentPage >= TotalPages - 1 ? "disabled" : "")" @onclick="NextPage">Next</div>
             </div>
         </div>
     </div>
 
-    <!-- ✅ LA GRILLE 4x4 (16 slots) -->
     <div class="grid-4x4">
         @for ( var localIndex = 0; localIndex < PageSize; localIndex++ )
         {
             var globalIndex = (CurrentPage * PageSize) + localIndex;
 
-            var slot = (globalIndex >= 0 && globalIndex < Slots.Count) ? Slots[globalIndex] : null;
-            var hasItem = slot != null && slot.Amount > 0;
+            var slot = (globalIndex >= 0 && globalIndex < Slots.Count) ? Slots[globalIndex] : default;
+            var hasItem = !string.IsNullOrEmpty( slot.ItemId ) && slot.Amount > 0;
 
             <GroundItemSlot
                 SlotIndex="@globalIndex"
-                Type="@(slot?.Type ?? default)"
-                Amount="@(slot?.Amount ?? 0)"
+                ItemId="@(slot.ItemId ?? "")"
+                Amount="@(slot.Amount)"
                 HasItem="@hasItem" />
         }
     </div>
 
 </div>
 
-
-@code {
+@code
+{
     public static GroundItemsPanel Instance { get; private set; }
 
-    // ===== Pagination =====
-    private const int PageSize = 16; // 4x4
+    private const int PageSize = 16;
     private int CurrentPage = 0;
+
+    public bool IsOpen { get; private set; } = false;
+
+    public struct SlotData
+    {
+        public string ItemId;
+        public int Amount;
+    }
+
+    public List<SlotData> Slots { get; set; } = new();
+
+    private RealTimeSince _sinceRefresh;
+
+    public GroundItemsPanel()
+    {
+        Instance = this;
+    }
+
+    protected override void OnUpdate()
+    {
+        base.OnUpdate();
+
+        if ( !IsOpen ) return;
+
+        if ( _sinceRefresh > 0.3f )
+        {
+            _sinceRefresh = 0;
+            GroundItemsService.RefreshLootForLocal();
+        }
+    }
 
     private int TotalPages
     {
@@ -81,51 +104,16 @@
         StateHasChanged();
     }
 
-    public bool IsOpen { get; set; }
-
-    public class SlotData
-    {
-        public Guid Id;
-        public string TypeName;
-        public ResourceType Type;
-        public int Amount;
-    }
-
-    public List<SlotData> Slots { get; set; } = new();
-
-    public GroundItemsPanel()
-	{
-		Instance = this;
-	}
-
-
-    private RealTimeSince _sinceRefresh;
-
-    protected override void OnUpdate()
-    {
-        base.OnUpdate();
-
-        if ( !IsOpen )
-            return;
-
-        if ( _sinceRefresh > 0.3f )
-        {
-            _sinceRefresh = 0;
-            GroundItemsService.RefreshLootForLocal();
-        }
-    }
-
     public static void Show( GroundItemDto[] items )
     {
         if ( Instance == null ) return;
 
         Instance.BuildSlots( items );
         Instance.IsOpen = true;
-
         Instance.ClampPage();
-
-        Log.Info($"[GroundItemsPanel] Show: items={items?.Length ?? 0}");
         Instance.StateHasChanged();
+
+        Log.Info( $"[GroundItemsPanel] Show items={items?.Length ?? 0}" );
     }
 
     public static void Hide()
@@ -133,61 +121,51 @@
         if ( Instance == null ) return;
 
         Instance.IsOpen = false;
-        Log.Info("[GroundItemsPanel] Hide()");
         Instance.StateHasChanged();
 
-        UiDragContext.Clear();
+        // Option: Clear main quand on ferme le loot
+        // UiDragContext.Clear();
     }
 
-    private void ClampPage() 
+    private void ClampPage()
     {
         var max = System.Math.Max( 0, TotalPages - 1 );
         if ( CurrentPage > max ) CurrentPage = max;
         if ( CurrentPage < 0 ) CurrentPage = 0;
-    } 
+    }
 
     private void BuildSlots( GroundItemDto[] items )
     {
         Slots.Clear();
 
+        // Si on tient déjà du loot en main, on le “cache” de la liste
         int heldToHide = 0;
-        ResourceType heldType = default;
+        string heldId = "";
 
-        if ( UiDragContext.HasItem
-             && UiDragContext.SourceKind == UiDragSourceKind.LootPanel
-             && UiDragContext.HeldType.HasValue
-             && UiDragContext.HeldAmount > 0 )
+        if ( UiDragContext.HasItem && UiDragContext.SourceKind == UiDragSourceKind.LootPanel )
         {
-            heldType   = UiDragContext.HeldType.Value;
+            heldId = UiDragContext.HeldItemId;
             heldToHide = UiDragContext.HeldAmount;
         }
 
         if ( items != null && items.Length > 0 )
         {
+            // Groupe par ItemId (pas par GO)
             var grouped = items
-                .GroupBy( it => it.Type )
+                .Where( it => !string.IsNullOrEmpty( it.ItemId ) && it.Amount > 0 )
+                .GroupBy( it => it.ItemId )
                 .Select( g =>
                 {
-                    ResourceType parsedType;
-                    if ( !Enum.TryParse<ResourceType>( g.Key, true, out parsedType ) )
-                        parsedType = ResourceType.Stellium;
-
                     int total = g.Sum( x => x.Amount );
 
-                    if ( parsedType == heldType && heldToHide > 0 )
+                    if ( g.Key == heldId && heldToHide > 0 )
                     {
                         int hide = System.Math.Min( total, heldToHide );
-                        total      -= hide;
+                        total -= hide;
                         heldToHide -= hide;
                     }
 
-                    return new SlotData
-                    {
-                        Id       = Guid.NewGuid(),
-                        TypeName = g.Key,
-                        Type     = parsedType,
-                        Amount   = total
-                    };
+                    return new SlotData { ItemId = g.Key, Amount = total };
                 })
                 .Where( s => s.Amount > 0 )
                 .ToList();
@@ -195,11 +173,11 @@
             Slots.AddRange( grouped );
         }
 
-        // Padding : compléter au multiple de 16 pour avoir des pages pleines
+        // Padding pages
         if ( Slots.Count <= 0 )
         {
             for ( int i = 0; i < PageSize; i++ )
-                Slots.Add( MakeEmptySlot() );
+                Slots.Add( default );
         }
         else
         {
@@ -208,33 +186,23 @@
             {
                 int need = PageSize - rem;
                 for ( int i = 0; i < need; i++ )
-                    Slots.Add( MakeEmptySlot() );
+                    Slots.Add( default );
             }
         }
 
         ClampPage();
     }
 
-    private SlotData MakeEmptySlot()
-    {
-        return new SlotData
-        {
-            Id       = Guid.Empty,
-            TypeName = string.Empty,
-            Type     = default,
-            Amount   = 0
-        };
-    }
-
     public void OnDragDrop( int fromIndex, int toIndex )
     {
+        // UI-only reorder (cosmétique)
         if ( fromIndex < 0 || fromIndex >= Slots.Count ) return;
-        if ( toIndex   < 0 || toIndex   >= Slots.Count ) return;
+        if ( toIndex < 0 || toIndex >= Slots.Count ) return;
         if ( fromIndex == toIndex ) return;
 
         var tmp = Slots[fromIndex];
         Slots[fromIndex] = Slots[toIndex];
-        Slots[toIndex]   = tmp;
+        Slots[toIndex] = tmp;
 
         StateHasChanged();
     }
@@ -244,43 +212,40 @@
         if ( index < 0 || index >= Slots.Count ) return;
 
         var slot = Slots[index];
-        bool primary   = button == "mouseleft";
+        bool primary = button == "mouseleft";
         bool secondary = button == "mouseright";
 
-        if ( !primary && !secondary )
-            return;
+        if ( !primary && !secondary ) return;
 
+        bool slotHasItem = !string.IsNullOrEmpty( slot.ItemId ) && slot.Amount > 0;
+
+        // Main vide => prendre
         if ( !UiDragContext.HasItem )
         {
-            if ( slot == null || slot.Amount <= 0 )
-                return;
+            if ( !slotHasItem ) return;
 
             if ( primary )
             {
-                UiDragContext.BeginHold( slot.Type, slot.Amount, UiDragSourceKind.LootPanel, index );
-                Slots[index] = MakeEmptySlot();
+                UiDragContext.BeginHold( slot.ItemId, slot.Amount, UiDragSourceKind.LootPanel, index );
+                Slots[index] = default;
                 StateHasChanged();
                 return;
             }
 
             if ( secondary )
             {
-                UiDragContext.BeginHold( slot.Type, 1, UiDragSourceKind.LootPanel, index );
-
+                UiDragContext.BeginHold( slot.ItemId, 1, UiDragSourceKind.LootPanel, index );
                 slot.Amount -= 1;
-                if ( slot.Amount <= 0 )
-                    Slots[index] = MakeEmptySlot();
-                else
-                    Slots[index] = slot;
-
+                Slots[index] = (slot.Amount <= 0) ? default : slot;
                 StateHasChanged();
                 return;
             }
         }
 
+        // Main pleine => déposer sur le sol
         if ( primary )
             HandlePrimaryPlace( slot, index );
-        else if ( secondary )
+        else
             HandleSecondaryPlace( slot, index );
 
         StateHasChanged();
@@ -290,113 +255,80 @@
     {
         if ( !UiDragContext.HasItem ) return;
 
-        var heldTypeOpt = UiDragContext.HeldType;
-        if ( !heldTypeOpt.HasValue )
+        var heldId = UiDragContext.HeldItemId;
+        var heldAmount = UiDragContext.HeldAmount;
+        var fromInventory = UiDragContext.SourceKind == UiDragSourceKind.Inventory;
+
+        if ( string.IsNullOrEmpty( heldId ) || heldAmount <= 0 )
         {
             UiDragContext.Clear();
             return;
         }
 
-        var heldType       = heldTypeOpt.Value;
-        var heldAmount     = UiDragContext.HeldAmount;
-        var heldSource     = UiDragContext.SourceKind;
-        bool fromInventory = (heldSource == UiDragSourceKind.Inventory);
-        int initialAmount  = heldAmount;
+        bool slotHasItem = !string.IsNullOrEmpty( slot.ItemId ) && slot.Amount > 0;
 
-        if ( heldAmount <= 0 )
+        if ( !slotHasItem )
         {
-            UiDragContext.Clear();
-            return;
-        }
-
-        if ( slot == null )
-            slot = MakeEmptySlot();
-
-        if ( slot.Amount <= 0 )
-        {
-            slot.Type     = heldType;
-            slot.TypeName = heldType.ToString();
-            slot.Amount   = heldAmount;
-
-            Slots[index] = slot;
+            Slots[index] = new SlotData { ItemId = heldId, Amount = heldAmount };
             UiDragContext.Clear();
 
-            if ( fromInventory && initialAmount > 0 )
-                UiLootInventoryBridge.RequestSpawnToWorld( heldType, initialAmount );
+            if ( fromInventory )
+                UiLootInventoryBridge.RequestSpawnToWorld( heldId, heldAmount );
 
             return;
         }
 
-        if ( slot.Type == heldType )
+        if ( slot.ItemId == heldId )
         {
             slot.Amount += heldAmount;
             Slots[index] = slot;
-
             UiDragContext.Clear();
 
-            if ( fromInventory && initialAmount > 0 )
-                UiLootInventoryBridge.RequestSpawnToWorld( heldType, initialAmount );
+            if ( fromInventory )
+                UiLootInventoryBridge.RequestSpawnToWorld( heldId, heldAmount );
 
             return;
         }
 
-        var tmpType   = slot.Type;
-        var tmpAmount = slot.Amount;
+        // swap (UI)
+        var tmpId = slot.ItemId;
+        var tmpAmt = slot.Amount;
 
-        slot.Type     = heldType;
-        slot.TypeName = heldType.ToString();
-        slot.Amount   = heldAmount;
+        Slots[index] = new SlotData { ItemId = heldId, Amount = heldAmount };
+        UiDragContext.BeginHold( tmpId, tmpAmt, UiDragSourceKind.LootPanel, index );
 
-        Slots[index] = slot;
-
-        UiDragContext.BeginHold( tmpType, tmpAmount, UiDragSourceKind.LootPanel, index );
-
-        if ( fromInventory && initialAmount > 0 )
-            UiLootInventoryBridge.RequestSpawnToWorld( heldType, initialAmount );
+        if ( fromInventory )
+            UiLootInventoryBridge.RequestSpawnToWorld( heldId, heldAmount );
     }
 
     private void HandleSecondaryPlace( SlotData slot, int index )
     {
         if ( !UiDragContext.HasItem ) return;
 
-        var heldTypeOpt = UiDragContext.HeldType;
-        if ( !heldTypeOpt.HasValue )
+        var heldId = UiDragContext.HeldItemId;
+        var heldAmount = UiDragContext.HeldAmount;
+        var fromInventory = UiDragContext.SourceKind == UiDragSourceKind.Inventory;
+
+        if ( string.IsNullOrEmpty( heldId ) || heldAmount <= 0 )
         {
             UiDragContext.Clear();
             return;
         }
 
-        var heldType       = heldTypeOpt.Value;
-        var heldAmount     = UiDragContext.HeldAmount;
-        var heldSource     = UiDragContext.SourceKind;
-        bool fromInventory = (heldSource == UiDragSourceKind.Inventory);
+        bool slotHasItem = !string.IsNullOrEmpty( slot.ItemId ) && slot.Amount > 0;
 
-        if ( heldAmount <= 0 )
+        if ( !slotHasItem )
         {
-            UiDragContext.Clear();
-            return;
-        }
-
-        if ( slot == null )
-            slot = MakeEmptySlot();
-
-        if ( slot.Amount <= 0 )
-        {
-            slot.Type     = heldType;
-            slot.TypeName = heldType.ToString();
-            slot.Amount   = 1;
-
-            Slots[index] = slot;
-
+            Slots[index] = new SlotData { ItemId = heldId, Amount = 1 };
             UiDragContext.TakeFromHand( 1 );
 
             if ( fromInventory )
-                UiLootInventoryBridge.RequestSpawnToWorld( heldType, 1 );
+                UiLootInventoryBridge.RequestSpawnToWorld( heldId, 1 );
 
             return;
         }
 
-        if ( slot.Type == heldType )
+        if ( slot.ItemId == heldId )
         {
             slot.Amount += 1;
             Slots[index] = slot;
@@ -404,7 +336,7 @@
             UiDragContext.TakeFromHand( 1 );
 
             if ( fromInventory )
-                UiLootInventoryBridge.RequestSpawnToWorld( heldType, 1 );
+                UiLootInventoryBridge.RequestSpawnToWorld( heldId, 1 );
 
             return;
         }

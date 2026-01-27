@@ -1,302 +1,191 @@
 using Sandbox;
+using System;
 using System.Linq;
 
 namespace Astrofront;
 
 /// <summary>
-/// Pont “UI ⇄ Monde” :
-/// - INVENTAIRE → MONDE : RequestSpawnToWorld (drop depuis l’inventaire)
-/// - LOOT → INVENTAIRE : RequestLootToInventory (ramassage via PanelTestUI + inventaire)
-/// - (optionnel) RequestConsumeFromWorld reste pour d’autres usages simples.
+/// Pont autoritaire (host) entre l'UI loot (GroundItemsPanel) et l'inventaire.
+/// Anti-dup: le host est la source de vérité (scan des pickups + retrait réel).
 /// </summary>
-public sealed class UiLootInventoryBridge : Component
+public static class UiLootInventoryBridge
 {
-    public static UiLootInventoryBridge Instance { get; private set; }
+	/// <summary>
+	/// UI -> Host : prendre du loot (ItemId) vers un slot d'inventaire.
+	/// amountWanted = ce que l'utilisateur essaie de placer (1 ou stack complet).
+	/// </summary>
+	[Rpc.Host]
+	public static void RequestLootToInventory( string itemId, int amountWanted, int inventorySlot )
+	{
+		var caller = Rpc.Caller ?? Connection.Local;
+		if ( caller == null ) return;
 
-    /// <summary>Rayon de recherche des pickups autour du joueur.</summary>
-    [Property] public float LootRadius { get; set; } = 160f;
+		if ( string.IsNullOrEmpty( itemId ) || amountWanted <= 0 )
+			return;
 
-    protected override void OnStart()
-    {
-        if ( Instance == null )
-        {
-            Instance = this;
-        }
-        else if ( Instance != this )
-        {
-            Log.Warning( "[UiLootInventoryBridge] Il existe déjà une instance, celle-ci sera ignorée." );
-        }
-    }
+		var scene = Game.ActiveScene;
+		if ( scene == null ) return;
 
-    protected override void OnDestroy()
-    {
-        if ( Instance == this )
-            Instance = null;
-    }
+		// PlayerState du caller
+		var ps = scene.GetAllComponents<PlayerState>()
+			.FirstOrDefault( p => p != null && p.Network != null && p.Network.Owner == caller );
 
-    // ==========================================================
-    //  MONDE → INVENTAIRE : chemin “simple” (consommer des pickups)
-    //  (On peut encore s’en servir ailleurs si besoin)
-    // ==========================================================
+		if ( ps == null ) return;
 
-    public static void RequestConsumeFromWorld( ResourceType type, int amount )
-    {
-        if ( amount <= 0 ) return;
+		// Inventaire
+		var inv = ps.GameObject.Components.Get<InventoryComponent>( FindMode.EverythingInSelfAndDescendants );
+		if ( inv == null ) return;
 
-        if ( Instance == null )
-        {
-            Log.Warning( "[UiLootInventoryBridge] Pas d'instance dans la scène – rien ne sera retiré du monde." );
-            return;
-        }
+		// Clamp slot (hands interdit)
+		inventorySlot = inventorySlot.Clamp( 0, inv.SlotCount - 1 );
+		if ( inventorySlot == 0 ) return;
 
-        Instance.ConsumeFromWorldHost( type, amount, Instance.LootRadius );
-    }
+		int remaining = amountWanted;
+		int movedTotal = 0;
 
-    [Rpc.Host]
-    private void ConsumeFromWorldHost( ResourceType type, int requested, float radius )
-    {
-        var caller = Rpc.Caller ?? Connection.Local;
-        if ( caller == null || requested <= 0 ) return;
+		// Scan pickups proches (côté host)
+		var pickups = scene.GetAllComponents<GroundItemPickup>()
+			.Where( p => p != null
+						&& p.Amount > 0
+						&& p.ItemId == itemId
+						&& IsNearPlayer( p, ps, GroundItemsService.ScanRadius ) )
+			.OrderBy( p => (p.Transform.World.Position - ps.Transform.World.Position).LengthSquared )
+			.ToList();
 
-        var ps = FindPlayerState( caller );
-        if ( ps == null ) return;
+		foreach ( var pickup in pickups )
+		{
+			if ( remaining <= 0 ) break;
 
-        var pos = ps.GameObject.Transform.World.Position;
-        float r2 = radius * radius;
+			int wantTake = Math.Min( remaining, pickup.Amount );
+			if ( wantTake <= 0 ) continue;
 
-        int remaining    = requested;
-        int removedTotal = 0;
+			// Tente de placer (host clamp stack/capacité)
+			int placed = inv.PlaceIntoSlotHost( inventorySlot, itemId, wantTake );
 
-        var pickups = Scene.GetAllComponents<ResourcePickup>()
-            .Where( p => p != null
-                      && p.Amount > 0
-                      && p.Type == type
-                      && (p.Transform.World.Position - pos).LengthSquared <= r2 )
-            .OrderBy( p => (p.Transform.World.Position - pos).LengthSquared )
-            .ToList();
+			if ( placed <= 0 )
+			{
+				// plus de place => stop
+				break;
+			}
 
-        foreach ( var p in pickups )
-        {
-            if ( remaining <= 0 )
-                break;
+			// Consomme le pickup
+			pickup.Amount -= placed;
+			movedTotal += placed;
+			remaining -= placed;
 
-            int take = System.Math.Min( remaining, p.Amount );
-            p.Amount -= take;
-            remaining -= take;
-            removedTotal += take;
+			if ( pickup.Amount <= 0 )
+				pickup.GameObject.Destroy();
+		}
 
-            if ( p.Amount <= 0 )
-            {
-                p.Amount = 0;
-                p.GameObject.Destroy();
-            }
-        }
+		// Retour uniquement au caller (sans Rpc.To)
+		using ( Rpc.FilterInclude( c => c == caller ) )
+		{
+			LootToInventoryResult( itemId, movedTotal, amountWanted, inventorySlot );
+		}
 
-        Log.Info( $"[UiLootInventoryBridge] Consume type={type}, requested={requested}, removed={removedTotal}" );
-    }
+		if ( movedTotal > 0 )
+			Log.Info( $"[Loot->Inv] +{movedTotal}/{amountWanted} {itemId} to slot {inventorySlot} ({caller.DisplayName})" );
+	}
 
-    /// <summary>
-    /// Alias ancien nom (au cas où il reste des appels). Le paramètre radius est ignoré.
-    /// </summary>
-    public static void RequestMoveFromWorldToInventory( ResourceType type, int amount, float radius )
-    {
-        RequestConsumeFromWorld( type, amount );
-    }
+	/// <summary>
+	/// UI -> Host : spawn au sol depuis l'inventaire (quand tu places dans loot panel).
+	/// IMPORTANT : "réalisme" => 1 pickup = 1 item. Donc on spawn N GameObjects avec Amount = 1.
+	/// </summary>
+	[Rpc.Host]
+	public static void RequestSpawnToWorld( string itemId, int amount )
+	{
+		var caller = Rpc.Caller ?? Connection.Local;
+		if ( caller == null ) return;
 
-    // ==========================================================
-    //  LOOT → INVENTAIRE : chemin sécurisé, anti-duplication
-    // ==========================================================
+		if ( string.IsNullOrEmpty( itemId ) || amount <= 0 )
+			return;
 
-    /// <summary>
-    /// Appelé côté client quand on dépose dans l’inventaire un stack
-    /// qui PROVIENT du loot (PanelTestUI).
-    /// 
-    /// On NE modifie PAS l’inventaire local ici : on demande au host
-    /// de faire la transaction en respectant :
-    ///  - ce qu’il y a VRAIMENT au sol
-    ///  - la capacité de l’inventaire
-    /// </summary>
-    public static void RequestLootToInventory( ResourceType type, int requested, int slotIndex )
-    {
-        if ( requested <= 0 ) return;
+		var scene = Game.ActiveScene;
+		if ( scene == null ) return;
 
-        if ( Instance == null )
-        {
-            Log.Warning( "[UiLootInventoryBridge] Pas d'instance – RequestLootToInventory ignoré." );
-            return;
-        }
+		var ps = scene.GetAllComponents<PlayerState>()
+			.FirstOrDefault( p => p != null && p.Network != null && p.Network.Owner == caller );
 
-        Instance.LootToInventoryHost( type, requested, slotIndex, Instance.LootRadius );
-    }
+		if ( ps == null ) return;
 
-    [Rpc.Host]
-    private void LootToInventoryHost( ResourceType type, int requested, int slotIndex, float radius )
-    {
-        var caller = Rpc.Caller ?? Connection.Local;
-        if ( caller == null || requested <= 0 ) return;
+		SpawnPickupsInFrontOf( scene, ps, itemId, amount );
 
-        var inv = FindInventoryFor( caller );
-        var ps  = FindPlayerState( caller );
-        if ( inv == null || ps == null ) return;
+		// retour client (juste log)
+		using ( Rpc.FilterInclude( c => c == caller ) )
+		{
+			SpawnToWorldResult( itemId, amount );
+		}
 
-        var pos = ps.GameObject.Transform.World.Position;
-        float r2 = radius * radius;
+		Log.Info( $"[Inv->World] spawn +{amount} {itemId} ({caller.DisplayName})" );
+	}
 
-        // 1) Combien il y a VRAIMENT au sol de ce type ?
-        var pickups = Scene.GetAllComponents<ResourcePickup>()
-            .Where( p => p != null
-                      && p.Amount > 0
-                      && p.Type == type
-                      && (p.Transform.World.Position - pos).LengthSquared <= r2 )
-            .OrderBy( p => (p.Transform.World.Position - pos).LengthSquared )
-            .ToList();
+	// ========= Client feedback =========
 
-        int available = 0;
-        foreach ( var p in pickups )
-            available += p.Amount;
+	[Rpc.Broadcast]
+	private static void LootToInventoryResult( string itemId, int moved, int wanted, int slot )
+	{
+		Log.Info( $"[Loot->Inv] +{moved}/{wanted} {itemId} -> slot {slot}" );
 
-        if ( available <= 0 )
-        {
-            Log.Info( $"[UiLootInventoryBridge] LootToInventoryHost : aucun {type} à portée." );
-            LootToInventoryResultClient( caller.Id.ToString(), type, requested, 0 );
-            return;
-        }
+		// ✅ Si on avait cet item en main depuis le loot, on retire ce qui a vraiment été déplacé
+		if ( moved > 0
+			&& UiDragContext.HasItem
+			&& UiDragContext.SourceKind == UiDragSourceKind.LootPanel
+			&& UiDragContext.HeldItemId == itemId )
+		{
+			UiDragContext.TakeFromHand( moved ); // Clear() si ça tombe à 0
+		}
+	}
 
-        int maxByWorld = System.Math.Min( requested, available );
-        if ( maxByWorld <= 0 )
-        {
-            LootToInventoryResultClient( caller.Id.ToString(), type, requested, 0 );
-            return;
-        }
 
-        // 2) Ajouter dans l’inventaire serveur en respectant la capacité globale
-        int added = inv.AddToSlot( slotIndex, type, maxByWorld );
-        if ( added <= 0 )
-        {
-            Log.Info( "[UiLootInventoryBridge] LootToInventoryHost : inventaire plein, rien ajouté." );
-            LootToInventoryResultClient( caller.Id.ToString(), type, requested, 0 );
-            return;
-        }
+	[Rpc.Broadcast]
+	private static void SpawnToWorldResult( string itemId, int amount )
+	{
+		Log.Info( $"[Inv->World] spawn +{amount} {itemId}" );
+	}
 
-        // Synchroniser le client propriétaire de l’inventaire
-        inv.AddToSlotOwner( slotIndex, type, added );
+	// ========= Helpers =========
 
-        // 3) Retirer 'added' unités des pickups au sol
-        int remaining = added;
+	private static bool IsNearPlayer( GroundItemPickup pickup, PlayerState ps, float radius )
+	{
+		float r2 = radius * radius;
+		return (pickup.Transform.World.Position - ps.Transform.World.Position).LengthSquared <= r2;
+	}
 
-        foreach ( var p in pickups )
-        {
-            if ( remaining <= 0 )
-                break;
-
-            int take = System.Math.Min( remaining, p.Amount );
-            p.Amount -= take;
-            remaining -= take;
-
-            if ( p.Amount <= 0 )
-            {
-                p.Amount = 0;
-                p.GameObject.Destroy();
-            }
-        }
-
-        Log.Info( $"[UiLootInventoryBridge] LootToInventoryHost type={type}, requested={requested}, added={added}" );
-
-        // 4) Informer UNIQUEMENT le client concerné
-        LootToInventoryResultClient( caller.Id.ToString(), type, requested, added );
-    }
-
-    [Rpc.Broadcast]
-    private void LootToInventoryResultClient( string targetId, ResourceType type, int requested, int accepted )
-    {
-        var local = Connection.Local;
-        if ( local == null || local.Id.ToString() != targetId )
-            return;
-
-        Log.Info( $"[UiLootInventoryBridge] Client result type={type}, requested={requested}, accepted={accepted}" );
-
-        // On retire seulement ce que le host a VRAIMENT accepté
-        if ( accepted > 0 )
-        {
-            UiDragContext.TakeFromHand( accepted );
-        }
-
-        // L’inventaire a été modifié côté host → le mirror local est mis à jour
-        // via AddToSlotOwner. On rafraîchit juste l’UI si elle est ouverte.
-        InventoryManagePanel.Instance?.BuildSlotsFromInventory();
-    }
-
-    // ==========================================================
-    //  INVENTAIRE → MONDE : spawn de pickups
-    // ==========================================================
-
-    public static void RequestSpawnToWorld( ResourceType type, int amount )
-    {
-        if ( amount <= 0 ) return;
-
-        if ( Instance == null )
-        {
-            Log.Warning( "[UiLootInventoryBridge] Pas d'instance – aucun pickup ne sera spawn." );
-            return;
-        }
-
-        Instance.SpawnToWorldHost( type, amount );
-    }
-
-    [Rpc.Host]
-private void SpawnToWorldHost( ResourceType type, int amount )
+	/// <summary>
+	/// Spawn "réaliste" : 1 pickup = 1 item (Amount = 1).
+	/// Ajoute un petit jitter pour éviter la superposition parfaite (sinon tu crois qu'il n'y en a qu'un).
+	/// </summary>
+	private static void SpawnPickupsInFrontOf( Scene scene, PlayerState ps, string itemId, int amount )
 {
-    var caller = Rpc.Caller ?? Connection.Local;
-    if ( caller == null || amount <= 0 ) return;
+	if ( scene == null || ps == null ) return;
+	if ( string.IsNullOrEmpty( itemId ) || amount <= 0 ) return;
 
-    var ps = Scene?.GetAllComponents<PlayerState>()
-                   ?.FirstOrDefault( p => p != null
-                                       && p.Network != null
-                                       && p.Network.Owner == caller );
-    if ( ps == null ) return;
+	var tr = ps.Transform.World;
 
-    var trPlayer = ps.GameObject.Transform.World;
+	// point de base devant le joueur
+	var basePos = tr.Position + tr.Rotation.Forward * 48f + Vector3.Up * 8f;
 
-    // Une petite boucle pour spawn 'amount' pickups d'1 unité chacun.
-    for ( int i = 0; i < amount; i++ )
-    {
-        var spawnPos = trPlayer.Position
-                      + trPlayer.Rotation.Forward * 48f
-                      + Vector3.Up * 8f
-                      + Vector3.Random.Normal * 4f; // léger scatter
+	// petit étalement en arc pour éviter que tout soit au même point
+	var right = tr.Rotation.Right;
+	var forward = tr.Rotation.Forward;
 
-        var go = Scene.CreateObject();
-        go.Name = $"pickup_{type}";
-        go.Transform.World = new Transform( spawnPos, Rotation.Identity );
+	for ( int i = 0; i < amount; i++ )
+	{
+		var go = scene.CreateObject();
+		go.Name = $"ground_{itemId}"; // debug only
 
-        var p = go.Components.Create<ResourcePickup>();
-        p.Type   = type;
-        p.Amount = 1;
+		// offset léger
+		float t = (amount <= 1) ? 0f : (i / (float)(amount - 1)) - 0.5f; // -0.5..+0.5
+		var offset = right * (t * 10f) + forward * (MathF.Abs(t) * 4f);
 
-        go.NetworkSpawn();
-    }
+		go.Transform.World = new Transform( basePos + offset, Rotation.Identity );
 
-    Log.Info( $"[UiLootInventoryBridge] Spawned {amount} pickups type={type}, amount=1 each" );
+		var pickup = go.Components.Create<GroundItemPickup>();
+		pickup.ItemId = itemId;
+		pickup.Amount = 1; // ✅ 1 par pickup
+
+		go.NetworkSpawn();
+	}
 }
 
-
-    // ==========================================================
-    //  Helpers serveur
-    // ==========================================================
-
-    private InventorySystem FindInventoryFor( Connection conn )
-    {
-        var ps = FindPlayerState( conn );
-        if ( ps == null ) return null;
-
-        return ps.GameObject?.Components.Get<InventorySystem>( FindMode.InSelf | FindMode.InChildren );
-    }
-
-    private PlayerState FindPlayerState( Connection conn )
-    {
-        return Scene?.GetAllComponents<PlayerState>()
-                    ?.FirstOrDefault( p => p != null
-                                        && p.Network != null
-                                        && p.Network.Owner == conn );
-    }
 }
