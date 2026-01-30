@@ -1,0 +1,119 @@
+/* plein écran stable */
+.vitals-fullscreen {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+
+	pointer-events: none;
+	z-index: 6000;
+}
+
+/* ===== BAR BASE ===== */
+.bar {
+	position: absolute;
+	bottom: 22px;
+
+	width: 250px;
+	height: 26px;
+}
+
+/* couches full */
+.bar .bg,
+.bar .gloss,
+.bar .shade,
+.bar .edge,
+.bar .fill-img {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+}
+
+
+/* edge : neutre (évite rectangle) */
+.bar .edge {
+	box-shadow: none;
+}
+
+/* ===== HEALTH ===== */
+.bar.health {
+	left: 50%;
+	transform: translateX(-350px);
+}
+
+.bar.health .fill-img {
+	background-size: 100% 100%;
+	background-repeat: no-repeat;
+	background-position: left center;
+}
+
+.bar.health .bg-img {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+
+	background-image: url("/ui/core/VitalBars/health/health_bg.png");
+	background-size: 100% 100%;
+	background-repeat: no-repeat;
+}
+
+
+/* ===== ENERGY ===== */
+.bar.energy {
+	left: 50%;
+	transform: translateX(100px);
+}
+
+/* ENERGY sprite (comme health) */
+.bar.energy .fill-img {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+
+	background-size: 100% 100%;
+	background-repeat: no-repeat;
+	background-position: right center; /* vide vers la gauche */
+}
+
+.bar.energy .bg-img {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+
+	background-image: url("/ui/core/VitalBars/energy/energy_bg.png");
+	background-size: 100% 100%;
+	background-repeat: no-repeat;
+}
+
+
+/* ===== WEIGHT ===== */
+
+/* ================= WEIGHT (sprite) ================= */
+
+.weight-img {
+	position: absolute;
+	left: 50%;
+	bottom: 20px;
+
+	width: 982px;
+	height: 141px;
+
+	/* ↓ échelle (ajuste 0.20 à 0.45 selon le rendu) */
+	transform: translateX(-50%) scale(0.20);
+	transform-origin: center bottom;
+
+	background-size: 100% 100%;
+	background-repeat: no-repeat;
+	pointer-events: none;
+}
+
+

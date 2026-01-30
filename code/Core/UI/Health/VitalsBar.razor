@@ -1,0 +1,200 @@
+@using Sandbox
+@using Sandbox.UI
+@using System.Linq
+@inherits Panel
+@namespace Astrofront
+
+@if ( Local is not null )
+{
+	@{
+		float hp = Local.HealthFraction;
+
+		const int MaxStep = 38;
+		int step = (int)((1f - hp) * MaxStep + 0.5f);
+		if ( step < 0 ) step = 0;
+		if ( step > MaxStep ) step = MaxStep;
+
+		@{
+	string hpImage = _hpShownStep == 0
+		? "/ui/core/VitalBars/health/health_master.png"
+		: $"/ui/core/VitalBars/health/health_{_hpShownStep:00}.png";
+}
+
+
+	}
+
+	<div class="vitals-fullscreen">
+
+		<!-- HEALTH -->
+		<div class="bar health">
+			<div class="bg-img"></div>
+			<div class="fill-img" style="background-image:url('@hpImage')"></div>
+			<div class="gloss"></div>
+			<div class="shade"></div>
+			<div class="edge"></div> 
+		</div>
+
+		<!-- ENERGY -->
+		@{
+	float en = Local.EnergyFraction;
+
+	const int MaxEnergyStep = 40;
+
+	int estep = (int)((1f - en) * MaxEnergyStep + 0.5f);
+
+	if ( estep < 0 ) estep = 0;
+	if ( estep > MaxEnergyStep ) estep = MaxEnergyStep;
+
+	@{
+	string energyImage = _enShownStep == 0
+		? "/ui/core/VitalBars/energy/energy_master.png"
+		: $"/ui/core/VitalBars/energy/energy_{_enShownStep:00}.png";
+}
+
+
+}
+
+	<div class="bar energy @(Local.EnergyFraction < 0.20f ? "low" : null)">
+		<div class="bg-img energy-bg"></div>
+		<div class="fill-img" style="background-image:url('@energyImage')"></div>
+		<div class="gloss"></div>
+		<div class="shade"></div>
+	</div>
+
+
+		<!-- WEIGHT -->
+		@{
+	int weightStep = (int)(Weight01 * 10f + 0.5f);
+
+	if ( weightStep < 0 ) weightStep = 0;
+	if ( weightStep > 10 ) weightStep = 10;
+
+	string weightImage = $"/ui/core/VitalBars/weight/weight_{weightStep:00}.png";
+}
+
+<div class="weight-img" style="background-image:url('@weightImage')"></div>
+
+
+	</div>
+}
+
+@code
+{
+
+
+	private int _hpShownStep = 0;
+private int _hpTargetStep = 0;
+
+private int _enShownStep = 0;
+private int _enTargetStep = 0;
+
+private float _stepAccumulator = 0f;
+private const float StepSpeed = 45f; // steps/sec (ajuste 30..80)
+
+public override void Tick()
+{
+	base.Tick();
+
+	var ps = Local;
+	if ( ps == null ) return;
+
+	const int MaxHpStep = 38;
+	const int MaxEnStep = 40;
+
+	// Targets (0 = plein, Max = vide)
+	_hpTargetStep = (int)((1f - ps.HealthFraction) * MaxHpStep + 0.5f);
+	if ( _hpTargetStep < 0 ) _hpTargetStep = 0;
+	if ( _hpTargetStep > MaxHpStep ) _hpTargetStep = MaxHpStep;
+
+	_enTargetStep = (int)((1f - ps.EnergyFraction) * MaxEnStep + 0.5f);
+	if ( _enTargetStep < 0 ) _enTargetStep = 0;
+	if ( _enTargetStep > MaxEnStep ) _enTargetStep = MaxEnStep;
+
+	_stepAccumulator += Time.Delta * StepSpeed;
+
+	bool changed = false;
+
+	while ( _stepAccumulator >= 1f )
+	{
+		_stepAccumulator -= 1f;
+
+		if ( _hpShownStep < _hpTargetStep ) { _hpShownStep++; changed = true; }
+		else if ( _hpShownStep > _hpTargetStep ) { _hpShownStep--; changed = true; }
+
+		if ( _enShownStep < _enTargetStep ) { _enShownStep++; changed = true; }
+		else if ( _enShownStep > _enTargetStep ) { _enShownStep--; changed = true; }
+	}
+
+	if ( changed )
+		StateHasChanged();
+}
+
+
+
+
+
+	private PlayerState Local
+	{
+		get
+		{
+			var scene = Scene;
+			if ( scene == null ) return null;
+
+			var ps = scene.GetAllComponents<PlayerState>()
+				.FirstOrDefault( p => p != null && !p.IsProxy && p.GameObject != null && p.GameObject.Tags.Has( "localplayer" ) );
+
+			if ( ps == null )
+			{
+				var local = Connection.Local;
+				if ( local != null )
+				{
+					ps = scene.GetAllComponents<PlayerState>()
+						.FirstOrDefault( p => p != null && !p.IsProxy && p.Network != null && p.Network.Owner == local );
+				}
+			}
+
+			return ps;
+		}
+	}
+
+	private InventoryComponent LocalInv
+	{
+		get
+		{
+			var ps = Local;
+			if ( ps?.GameObject == null ) return null;
+
+			return ps.GameObject.Components.Get<InventoryComponent>( FindMode.EverythingInSelfAndDescendants );
+		}
+	}
+
+	private float Weight01
+	{
+		get
+		{
+			var inv = LocalInv;
+			if ( inv == null || inv.CapacitySpace <= 0 ) return 0f;
+
+			var used = inv.UsedSpace();
+			var v = (float)used / (float)inv.CapacitySpace;
+			return v.Clamp( 0f, 1f );
+		}
+	}
+
+	protected override int BuildHash()
+	{
+		var ps = Local;
+		if ( ps == null ) return 0;
+
+		int w = (int)(Weight01 * 1000f);
+
+		int hash = 17;
+		hash = (hash * 31) ^ ps.Health;
+		hash = (hash * 31) ^ ps.MaxHealth;
+		hash = (hash * 31) ^ ps.Energy;
+		hash = (hash * 31) ^ ps.MaxEnergy;
+		hash = (hash * 31) ^ w;
+
+		return hash;
+	}
+}

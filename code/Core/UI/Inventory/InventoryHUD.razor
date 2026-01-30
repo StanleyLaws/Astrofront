@@ -3,22 +3,15 @@
 @namespace Astrofront
 @inherits PanelComponent
 
-<root class="invquick-root @(_isVisible ? "visible" : "hidden")">
+<root class="invquick-fullscreen invquick-root @(_isVisible ? "visible" : "hidden")">
 
-    <div class="invquick-weight">
-        <div class="weight-bar">
-            <div class="weight-fill @(Weight01 > 0.85f ? "heavy" : null)"
-                 style="height: @(Weight01 * 100f)%">
-            </div>
-        </div>
-        <div class="weight-text">@($"{WeightPercent}%")</div>
-    </div>
+
 
     <div class="invquick-bar">
         @for ( int i = 0; i < _slotCount; i++ )
         {
             bool isHands = (i == 0);
-
+ 
             var slot   = _slots[i];
             var itemId = slot.ItemId;
             var amount = slot.Amount;
@@ -43,7 +36,6 @@
 			isHands ? "background-image: url('/ui/icons/hands.png');" :
 			(!hasItem ? "background-image: none;" :
 			$"background-image: url('{ItemRegistry.GetIcon(itemId)}');");
-
 
 
 
@@ -198,16 +190,4 @@
         StateHasChanged();
     }
 
-    private float Weight01
-    {
-        get
-        {
-            if ( _inv == null || _inv.CapacitySpace <= 0 ) return 0f;
-            var used = _inv.UsedSpace();
-            var v = (float)used / (float)_inv.CapacitySpace;
-            return v.Clamp( 0f, 1f );
-        }
-    }
-
-    private int WeightPercent => (int)(Weight01 * 100f);
 }

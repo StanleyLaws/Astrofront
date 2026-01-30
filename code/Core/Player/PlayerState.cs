@@ -9,49 +9,56 @@ public sealed class PlayerState : Component
 {
 	[Sync( SyncFlags.FromHost )] public Team Team { get; private set; } = Team.None;
 
-	// Neutre (Core) : chaque mode peut choisir ses valeurs. 
+	// Health (neutre)
 	[Sync( SyncFlags.FromHost )] public int MaxHealth { get; private set; } = 100;
 	[Sync( SyncFlags.FromHost )] public int Health { get; private set; } = 100;
 
+	// ✅ Energy (neutre)
+	[Sync( SyncFlags.FromHost )] public int MaxEnergy { get; private set; } = 100;
+	[Sync( SyncFlags.FromHost )] public int Energy { get; private set; } = 100;
+
 	[Sync( SyncFlags.FromHost )] public int Kills { get; private set; }
 
-
 	public float HealthFraction => MaxHealth <= 0 ? 0f : (float)Health / MaxHealth;
+	public float EnergyFraction => MaxEnergy <= 0 ? 0f : (float)Energy / MaxEnergy;
+
 	public bool IsAlive => Health > 0;
 
 	protected override void OnStart()
-{
-    if ( !IsProxy )
-        GameObject.Tags.Add( "localplayer" );
-
-    // La caméra sera gérée uniquement par OwnerOnlyCamera (source unique)
-}
-
+	{
+		if ( !IsProxy )
+			GameObject.Tags.Add( "localplayer" );
+	}
 
 	protected override void OnUpdate()
-{
-    if ( IsProxy ) return;
-    if ( UiModalController.IsUiLockedLocal ) return;
+	{
+		if ( IsProxy ) return;
+		if ( UiModalController.IsUiLockedLocal ) return;
 
-    // Test: Flashlight => damage 20% (demande au host)
-    if ( Input.Pressed( "Flashlight" ) )
-    {
-        DamageSelfTestHost( 0.05f );
-    }
-}
+		// Test déjà existant
+		if ( Input.Pressed( "Flashlight" ) )
+		{
+			DamageSelfTestHost( 0.05f );
+		}
 
-[Rpc.Host]
-private void DamageSelfTestHost( float fraction )
-{
-    // Host only
-    var amount = (int)(MaxHealth * fraction);
-    AddHealthHost( -amount );
-}
+		// ✅ Test énergie (optionnel, juste pour voir la barre bouger)
+		// Exemple : Sprint => -5 énergie
+		if ( Input.Pressed( "Test" ) )
+		{
+			AddEnergyHost( -5 );
+		}
+	}
 
+	[Rpc.Host]
+	private void DamageSelfTestHost( float fraction )
+	{
+		var amount = (int)(MaxHealth * fraction);
+		AddHealthHost( -amount );
+	}
 
 	// --- API Host neutre ---
 
-	public void SetTeamHost( Team t ) 
+	public void SetTeamHost( Team t )
 	{
 		if ( !Networking.IsHost ) return;
 		Team = t;
@@ -74,6 +81,27 @@ private void DamageSelfTestHost( float fraction )
 	{
 		if ( !Networking.IsHost ) return;
 		SetHealthHost( Health + delta );
+	}
+
+	// ✅ Energy API Host neutre
+
+	public void SetMaxEnergyHost( int value )
+	{
+		if ( !Networking.IsHost ) return;
+		MaxEnergy = Math.Max( 0, value );
+		Energy = Math.Min( Energy, MaxEnergy );
+	}
+
+	public void SetEnergyHost( int value )
+	{
+		if ( !Networking.IsHost ) return;
+		Energy = Math.Clamp( value, 0, MaxEnergy );
+	}
+
+	public void AddEnergyHost( int delta )
+	{
+		if ( !Networking.IsHost ) return;
+		SetEnergyHost( Energy + delta );
 	}
 
 	// --- TP (neutre) ---

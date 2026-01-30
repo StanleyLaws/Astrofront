@@ -2,14 +2,28 @@
    INVENTORY HUD — SAFE CSS (NO SCSS, NO FLEX)
    ============================================================ */
 
+/* ================= FULLSCREEN LAYER ================= */
+
+.invquick-fullscreen {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+
+  pointer-events: none;
+  z-index: 5000;
+}
+
 /* ================= ROOT ================= */
 
 .invquick-root {
   position: absolute;
-  left: 50%;
-  bottom: 70px;            /* ⇦ position verticale HUD */
-  transform: translateX(-50%);
-  z-index: 5000;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+
   pointer-events: none;
 
   opacity: 0;
@@ -19,12 +33,13 @@
 .invquick-root.visible { opacity: 1; }
 .invquick-root.hidden  { opacity: 0; }
 
+
 /* ================= BAR ================= */
 
 .invquick-bar {
   position: absolute;
   left: 50%;
-  bottom: 0px;
+  bottom: 60px;
   transform: translateX(-50%);
 
   width: 540px;           /* ⇦ largeur totale (5 slots) */
@@ -144,25 +159,19 @@
 
 .slot-name {
   position: absolute;
-  left: 91%;
+  left: 50%;
   top: 100%;
   transform: translateX(-50%);
 
-  margin-top: 6px;        /* ⇦ distance sous le slot */
-  width: 120px;           /* ⇦ largeur label */
+  margin-top: 6px;
+  width: 140px;
+  height: 14px;
 
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-  color: white;
-  text-align: center;
-
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-
+  pointer-events: none;
   opacity: 0;
 }
 
@@ -170,51 +179,14 @@
   opacity: 1;
 }
 
+.slot-name {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: white;
 
-/* ================= WEIGHT BAR ================= */
-
-.invquick-weight {
-  position: absolute;
-  left: 50%;
-  bottom: -50px;
-  transform: translateX(-50%);
-  pointer-events: none;
-  opacity: 0.95;
-}
-
-.weight-bar {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-
-  width: 8px;
-  height: 64px;
-
-  border-radius: 999px;
-  background-color: #0a0a10;
-  opacity: 0.55;
-
+  white-space: nowrap;
   overflow: hidden;
-}
-
-.weight-fill {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-
-  background-color: #5a96ff;
-}
-
-.weight-text {
-  position: absolute;
-  left: 16px;
-  bottom: 18px;
-
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-
-  color: #a0d2ff;
-  text-shadow: 0 0 6px #5a96ff;
+  text-overflow: ellipsis;
 }

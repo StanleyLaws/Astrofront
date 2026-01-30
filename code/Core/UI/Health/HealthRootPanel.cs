@@ -21,7 +21,7 @@ public sealed class HealthRootPanel : PanelComponent
             Root = null;
         }
 
-        Root = new HealthBar();
+        Root = new VitalsBar(); 
 
         Panel.AddClass( "fullscreen" );
         Panel.AddChild( Root );
