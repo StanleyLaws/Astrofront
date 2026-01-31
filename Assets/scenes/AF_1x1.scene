@@ -218,7 +218,7 @@
       "__version": 2,
       "Flags": 0,
       "Name": "Cube",
-      "Position": "-185.6747,152.7892,58.61933",
+      "Position": "-185.6747,152.7892,90.93837",
       "Rotation": "0,0,0,1",
       "Scale": "1,1,1",
       "Tags": "",
@@ -261,7 +261,7 @@
           "__guid": "be4c50a8-8fd8-49a8-959d-b094fbc0a1ce",
           "__enabled": true,
           "Flags": 0,
-          "Center": "0,0,0",
+          "Center": "0,0,12.67698",
           "ColliderFlags": 0,
           "Elasticity": null,
           "Friction": null,
@@ -277,7 +277,7 @@
           "OnTriggerEnter": null,
           "OnTriggerExit": null,
           "RollingResistance": null,
-          "Scale": "100,100,100",
+          "Scale": "97.93002,100,74.64598",
           "Static": false,
           "Surface": null,
           "SurfaceVelocity": "0,0,0"
@@ -422,7 +422,7 @@
           "OnComponentUpdate": null,
           "PlayerPrefab": {
             "_type": "gameobject",
-            "prefab": "prefabs/modes/astrofront/player/player2.prefab"
+            "prefab": "prefabs/core/player.prefab"
           },
           "SpawnPoints": [
             {

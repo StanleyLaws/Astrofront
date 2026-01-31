@@ -10,7 +10,7 @@
 
 <div class="invmanage-root">
     <div class="invmanage-header">
-        <span class="title">Inventaire</span>
+        <span class="title">Inventory</span>
     </div>
 
     <div class="invmanage-bar">
@@ -43,6 +43,8 @@
     private InventoryComponent _inv;
 
     private int _slotCount = 5;
+	
+	private int _lastDragVersion = -1;
 
     private struct SlotView
     {
@@ -64,13 +66,23 @@
     }
 
     protected override void OnUpdate()
-    {
-        if ( _inv == null )
-        {
-            BindLocalInventory();
-            return;
-        }
-    }
+	{
+		if ( _inv == null )
+		{
+			BindLocalInventory();
+			return;
+		}
+
+		// ✅ Si la main fantôme change (begin/clear/take), on refresh l'affichage
+		// pour que l'overlay visuel reste cohérent même quand le snapshot arrive avant le callback.
+		if ( _lastDragVersion != UiDragContext.Version )
+		{
+			_lastDragVersion = UiDragContext.Version;
+			PullSlots();
+			StateHasChanged();
+		}
+	}
+
 
     protected override void OnDestroy()
     {
@@ -115,23 +127,52 @@
     }
 
     private void PullSlots()
-    {
-        if ( _inv == null ) return;
+	{
+		if ( _inv == null ) return;
 
-        var snap = _inv.GetSlotsSnapshot();
-        if ( snap == null || snap.Count <= 0 ) return;
+		var snap = _inv.GetSlotsSnapshot();
+		if ( snap == null || snap.Count <= 0 ) return;
 
-        _slotCount = snap.Count;
+		_slotCount = snap.Count;
 
-        if ( _slots == null || _slots.Length != _slotCount )
-            _slots = new SlotView[_slotCount];
+		if ( _slots == null || _slots.Length != _slotCount )
+			_slots = new SlotView[_slotCount];
 
-        for ( int i = 0; i < _slotCount; i++ )
-        {
-            var (id, amt) = snap[i];
-            _slots[i] = new SlotView { ItemId = id ?? "", Amount = amt };
-        }
-    }
+		bool hideFromInv = UiDragContext.HasItem
+			&& UiDragContext.SourceKind == UiDragSourceKind.Inventory
+			&& UiDragContext.SourceIndex >= 0
+			&& UiDragContext.SourceIndex < _slotCount;
+
+		int hideIndex = hideFromInv ? UiDragContext.SourceIndex : -1;
+		string hideId = hideFromInv ? UiDragContext.HeldItemId : "";
+		int hideAmt = hideFromInv ? UiDragContext.HeldAmount : 0;
+
+		for ( int i = 0; i < _slotCount; i++ )
+		{
+			var (id, amt) = snap[i];
+
+			id ??= "";
+			int shownAmt = amt;
+
+			if ( i == hideIndex
+				 && !string.IsNullOrEmpty( hideId )
+				 && string.Equals( id, hideId, System.StringComparison.OrdinalIgnoreCase )
+				 && hideAmt > 0 )
+			{
+				shownAmt = System.Math.Max( 0, amt - hideAmt );
+
+				if ( shownAmt <= 0 )
+				{
+					shownAmt = 0;
+					id = "";
+				}
+			}
+
+			_slots[i] = new SlotView { ItemId = id, Amount = shownAmt };
+		}
+	}
+
+
 
     private void OnSelectionChanged( int idx )
     {
@@ -161,117 +202,136 @@
     }
 
     public void OnSlotPrimaryClick( int index )
+{
+    if ( _inv == null ) return;
+    if ( index == 0 ) return;
+    if ( index < 0 || index >= _slotCount ) return;
+
+    PullSlots();
+    var slot = _slots[index];
+    bool slotHasItem = !string.IsNullOrEmpty( slot.ItemId ) && slot.Amount > 0;
+
+    // 1) Main vide -> prendre tout (UI only)
+    if ( !UiDragContext.HasItem )
     {
-        if ( _inv == null ) return;
-        if ( index == 0 ) return;
-        if ( index < 0 || index >= _slotCount ) return;
-
-        PullSlots();
-        var slot = _slots[index];
-        bool slotHasItem = !string.IsNullOrEmpty( slot.ItemId ) && slot.Amount > 0;
-
-        // 1) Main vide -> prendre tout
-        if ( !UiDragContext.HasItem )
-        {
-            if ( !slotHasItem ) return;
-
-            UiDragContext.BeginHold( slot.ItemId, slot.Amount, UiDragSourceKind.Inventory, index );
-            _inv.RequestTakeHost( index, slot.Amount );
-            return;
-        }
-
-        // 2) Main pleine -> placer
-        var heldId = UiDragContext.HeldItemId;
-        var heldAmount = UiDragContext.HeldAmount;
-
-        if ( heldAmount <= 0 || string.IsNullOrEmpty( heldId ) )
-        {
-            UiDragContext.Clear();
-            return;
-        }
-
-        // Si la main vient du loot -> transaction serveur anti-dup
-        if ( UiDragContext.SourceKind == UiDragSourceKind.LootPanel )
-        {
-            UiLootInventoryBridge.RequestLootToInventory( heldId, heldAmount, index );
-            return;
-        }
-
-        // Main vient de l'inventaire :
-        // - slot vide -> place tout
-        if ( !slotHasItem )
-        {
-            _inv.RequestPlaceHost( index, heldId, heldAmount );
-            UiDragContext.Clear();
-            return;
-        }
-
-        // - même item -> merge (place tout, le host clamp maxstack)
-        if ( slot.ItemId == heldId )
-        {
-            _inv.RequestPlaceHost( index, heldId, heldAmount );
-            UiDragContext.Clear();
-            return;
-        }
-
-        // - item différent -> swap main <-> slot :
-        //   a) prendre tout du slot (devient nouvelle main)
-        //   b) placer l'ancien held dans le slot
-        var oldHeldId = heldId;
-        var oldHeldAmt = heldAmount;
+        if ( !slotHasItem ) return;
 
         UiDragContext.BeginHold( slot.ItemId, slot.Amount, UiDragSourceKind.Inventory, index );
-        _inv.RequestTakeHost( index, slot.Amount );
-        _inv.RequestPlaceHost( index, oldHeldId, oldHeldAmt );
+
+        // ✅ refresh immédiat pour appliquer l'overlay visuel (slot "vidé")
+        PullSlots();
+        StateHasChanged();
+        return;
     }
+
+    // 2) Main pleine -> placer / annuler
+    var heldId = UiDragContext.HeldItemId;
+    var heldAmount = UiDragContext.HeldAmount;
+
+    if ( heldAmount <= 0 || string.IsNullOrEmpty( heldId ) )
+    {
+        UiDragContext.Clear();
+        PullSlots();
+        StateHasChanged();
+        return;
+    }
+
+    // Si la main vient du loot -> transaction serveur anti-dup
+    if ( UiDragContext.SourceKind == UiDragSourceKind.LootPanel )
+    {
+        UiLootInventoryBridge.RequestLootToInventory( heldId, heldAmount, index );
+        return;
+    }
+
+    // ✅ Cas important (ton besoin) :
+    // Si la main vient de l'inventaire et qu'on reclique le slot source -> on "repose" = cancel UI
+    if ( UiDragContext.SourceKind == UiDragSourceKind.Inventory
+         && UiDragContext.SourceIndex == index )
+    {
+        UiDragContext.Clear();
+        PullSlots();
+        StateHasChanged();
+        return;
+    }
+
+    // Main vient de l'inventaire -> transaction atomique host
+    // Autorise uniquement slot vide ou même item (swap via drag&drop)
+    if ( !slotHasItem || slot.ItemId == heldId )
+    {
+        _inv.RequestMoveHeldHost( UiDragContext.SourceIndex, index, heldAmount );
+        return;
+    }
+
+    // item différent : pas d'action en clic (swap via drag&drop)
+}
+
+
 
     public void OnSlotSecondaryClick( int index )
+{
+    if ( _inv == null ) return;
+    if ( index == 0 ) return;
+    if ( index < 0 || index >= _slotCount ) return;
+
+    PullSlots();
+    var slot = _slots[index];
+    bool slotHasItem = !string.IsNullOrEmpty( slot.ItemId ) && slot.Amount > 0;
+
+    // 1) Main vide -> prendre 1 (UI only)
+    if ( !UiDragContext.HasItem )
     {
-        if ( _inv == null ) return;
-        if ( index == 0 ) return;
-        if ( index < 0 || index >= _slotCount ) return;
+        if ( !slotHasItem ) return;
 
+        UiDragContext.BeginHold( slot.ItemId, 1, UiDragSourceKind.Inventory, index );
+
+        // ✅ refresh immédiat pour appliquer l'overlay visuel (slot réduit)
         PullSlots();
-        var slot = _slots[index];
-        bool slotHasItem = !string.IsNullOrEmpty( slot.ItemId ) && slot.Amount > 0;
-
-        // 1) Main vide -> prendre 1
-        if ( !UiDragContext.HasItem )
-        {
-            if ( !slotHasItem ) return;
-
-            UiDragContext.BeginHold( slot.ItemId, 1, UiDragSourceKind.Inventory, index );
-            _inv.RequestTakeHost( index, 1 );
-            return;
-        }
-
-        // 2) Main pleine -> placer 1
-        var heldId = UiDragContext.HeldItemId;
-        var heldAmount = UiDragContext.HeldAmount;
-
-        if ( heldAmount <= 0 || string.IsNullOrEmpty( heldId ) )
-        {
-            UiDragContext.Clear();
-            return;
-        }
-
-        // Loot -> inventaire (1)
-        if ( UiDragContext.SourceKind == UiDragSourceKind.LootPanel )
-        {
-            UiLootInventoryBridge.RequestLootToInventory( heldId, 1, index );
-            return;
-        }
-
-        // Inventaire -> inventaire : place 1 si slot vide ou même item
-        if ( !slotHasItem || slot.ItemId == heldId )
-        {
-            _inv.RequestPlaceHost( index, heldId, 1 );
-            UiDragContext.TakeFromHand( 1 );
-            return;
-        }
-
-        // slot différent : on ne fait rien en secondaire
+        StateHasChanged();
+        return;
     }
+
+    // 2) Main pleine -> placer 1 / annuler
+    var heldId = UiDragContext.HeldItemId;
+    var heldAmount = UiDragContext.HeldAmount;
+
+    if ( heldAmount <= 0 || string.IsNullOrEmpty( heldId ) )
+    {
+        UiDragContext.Clear();
+        PullSlots();
+        StateHasChanged();
+        return;
+    }
+
+    // Loot -> inventaire (1)
+    if ( UiDragContext.SourceKind == UiDragSourceKind.LootPanel )
+    {
+        UiLootInventoryBridge.RequestLootToInventory( heldId, 1, index );
+        return;
+    }
+
+    // ✅ Cas important :
+    // clic droit sur le slot source = "remettre 1" => en pratique cancel UI si tu veux le même feeling.
+    // (tu peux aussi choisir de clear seulement si HeldAmount==1, mais je reste simple)
+    if ( UiDragContext.SourceKind == UiDragSourceKind.Inventory
+         && UiDragContext.SourceIndex == index )
+    {
+        UiDragContext.Clear();
+        PullSlots();
+        StateHasChanged();
+        return;
+    }
+
+    // Inventaire -> inventaire : transaction atomique host (1)
+    if ( !slotHasItem || slot.ItemId == heldId )
+    {
+        _inv.RequestMoveHeldHost( UiDragContext.SourceIndex, index, 1 );
+        return;
+    }
+
+    // slot différent : on ne fait rien en secondaire
+}
+
+
 
     // =========================
     // Ouverture / Fermeture
@@ -284,30 +344,23 @@
             Instance.BindLocalInventory();
 
         Instance.PullSlots();
+		Instance._lastDragVersion = UiDragContext.Version;
         Instance.IsOpen = true;
         Instance.StateHasChanged();
     }
 
     public static void Hide()
-	{
-		if ( Instance == null ) return;
+    {
+        if ( Instance == null ) return;
 
-		// ✅ Si on ferme avec une main "inventaire", on remet tout dans l'inventaire
-		if ( Instance._inv != null
-			 && UiDragContext.HasItem
-			 && UiDragContext.SourceKind == UiDragSourceKind.Inventory )
-		{
-			Instance._inv.RequestRefundHeldHost(
-				UiDragContext.HeldItemId,
-				UiDragContext.HeldAmount,
-				UiDragContext.SourceIndex
-			);
+        // ✅ main inventaire = UI only -> on clear simplement
+        if ( UiDragContext.HasItem && UiDragContext.SourceKind == UiDragSourceKind.Inventory )
+        {
+            UiDragContext.Clear();
+        }
 
-			UiDragContext.Clear();
-		}
-
-		Instance.IsOpen = false;
-		Instance.StateHasChanged();
-	}
+        Instance.IsOpen = false;
+        Instance.StateHasChanged();
+    }
 
 }

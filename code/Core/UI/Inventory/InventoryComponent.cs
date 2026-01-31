@@ -275,6 +275,85 @@ public sealed class InventoryComponent : Component
 		PlaceIntoSlotHost( slot, itemId, amount );
 	}
 
+	/// <summary>
+	/// ✅ NOUVEAU : transaction atomique inventaire -> inventaire basée sur une "main UI-only".
+	/// Retire depuis fromSlot puis place dans toSlot (slot vide ou même item uniquement).
+	/// Le callback côté client décrémente UiDragContext uniquement du moved réel.
+	/// </summary>
+	[Rpc.Host]
+	public void RequestMoveHeldHost( int fromSlot, int toSlot, int amountWanted )
+	{
+		if ( !IsCallerOwner() ) return;
+
+		if ( fromSlot == 0 || toSlot == 0 ) { SendMoveHeldResultToCaller( "", 0, fromSlot, toSlot ); return; }
+		if ( fromSlot < 0 || toSlot < 0 || fromSlot >= SlotCount || toSlot >= SlotCount ) { SendMoveHeldResultToCaller( "", 0, fromSlot, toSlot ); return; }
+		if ( fromSlot == toSlot ) { SendMoveHeldResultToCaller( "", 0, fromSlot, toSlot ); return; }
+		if ( amountWanted <= 0 ) { SendMoveHeldResultToCaller( "", 0, fromSlot, toSlot ); return; }
+
+		var srcId = _itemIds[fromSlot];
+		var srcAmt = _amounts[fromSlot];
+		if ( string.IsNullOrEmpty( srcId ) || srcAmt <= 0 )
+		{
+			SendMoveHeldResultToCaller( "", 0, fromSlot, toSlot );
+			return;
+		}
+
+		int want = Math.Min( amountWanted, srcAmt );
+
+		// Destination : autorise uniquement vide ou même item (pas de swap ici)
+		if ( _amounts[toSlot] > 0 && _itemIds[toSlot] != srcId )
+		{
+			SendMoveHeldResultToCaller( srcId, 0, fromSlot, toSlot );
+			return;
+		}
+
+		// 1) retire réellement de la source (libère capacité si besoin)
+		int taken = TakeFromSlotHost( fromSlot, want );
+		if ( taken <= 0 )
+		{
+			SendMoveHeldResultToCaller( srcId, 0, fromSlot, toSlot );
+			return;
+		}
+
+		// 2) place dans la destination (host clamp stack + capacité)
+		int placed = PlaceIntoSlotHost( toSlot, srcId, taken );
+
+		// 3) remet le reste dans la source (jamais delete)
+		int remaining = taken - placed;
+		if ( remaining > 0 )
+		{
+			PlaceIntoSlotHost( fromSlot, srcId, remaining );
+		}
+
+		SendMoveHeldResultToCaller( srcId, placed, fromSlot, toSlot );
+	}
+
+	private void SendMoveHeldResultToCaller( string itemId, int moved, int fromSlot, int toSlot )
+	{
+		var caller = Rpc.Caller ?? Connection.Local;
+		if ( caller == null ) return;
+
+		using ( Rpc.FilterInclude( c => c == caller ) )
+		{
+			MoveHeldResult( itemId ?? "", moved, fromSlot, toSlot );
+		}
+	}
+
+	[Rpc.Broadcast]
+	private void MoveHeldResult( string itemId, int moved, int fromSlot, int toSlot )
+	{
+		if ( moved <= 0 ) return;
+
+		// Si on tient bien cet item depuis ce slot inventaire, on décrémente la main fantôme
+		if ( UiDragContext.HasItem
+			&& UiDragContext.SourceKind == UiDragSourceKind.Inventory
+			&& UiDragContext.SourceIndex == fromSlot
+			&& string.Equals( UiDragContext.HeldItemId, itemId, StringComparison.OrdinalIgnoreCase ) )
+		{
+			UiDragContext.TakeFromHand( moved );
+		}
+	}
+
 	[Rpc.Host]
 	public void RequestDropHost( int slot, int amount )
 	{
@@ -291,8 +370,7 @@ public sealed class InventoryComponent : Component
 
 		SpawnPickupsInFrontOf( Rpc.Caller ?? Connection.Local, itemId, taken );
 	}
-	
-	
+
 	[Rpc.Host]
 	public void RequestRefundHeldHost( string itemId, int amount, int preferredSlot )
 	{
@@ -328,7 +406,76 @@ public sealed class InventoryComponent : Component
 			SpawnPickupsInFrontOf( Rpc.Caller ?? Connection.Local, itemId, remaining );
 		}
 	}
+	
+	[Rpc.Host]
+public void RequestDropHeldToWorldHost( int fromSlot, string itemId, int amountWanted )
+{
+	if ( !IsCallerOwner() ) return;
 
+	if ( fromSlot == 0 ) { SendDropHeldResultToCaller( itemId, 0, fromSlot ); return; }
+	if ( fromSlot < 0 || fromSlot >= SlotCount ) { SendDropHeldResultToCaller( itemId, 0, fromSlot ); return; }
+	if ( string.IsNullOrEmpty( itemId ) || amountWanted <= 0 ) { SendDropHeldResultToCaller( itemId, 0, fromSlot ); return; }
+
+	// Source doit toujours contenir cet item
+	var srcId = _itemIds[fromSlot];
+	var srcAmt = _amounts[fromSlot];
+
+	if ( string.IsNullOrEmpty( srcId ) || srcAmt <= 0 )
+	{
+		SendDropHeldResultToCaller( itemId, 0, fromSlot );
+		return;
+	}
+
+	if ( !string.Equals( srcId, itemId, StringComparison.OrdinalIgnoreCase ) )
+	{
+		SendDropHeldResultToCaller( itemId, 0, fromSlot );
+		return;
+	}
+
+	int want = Math.Min( amountWanted, srcAmt );
+
+	// Retire réellement
+	int taken = TakeFromSlotHost( fromSlot, want );
+	if ( taken <= 0 )
+	{
+		SendDropHeldResultToCaller( itemId, 0, fromSlot );
+		return;
+	}
+
+	// Spawn au monde
+	SpawnPickupsInFrontOf( Rpc.Caller ?? Connection.Local, itemId, taken );
+
+	// Feedback caller => décrémente main fantôme
+	SendDropHeldResultToCaller( itemId, taken, fromSlot );
+}
+
+private void SendDropHeldResultToCaller( string itemId, int moved, int fromSlot )
+{
+	var caller = Rpc.Caller ?? Connection.Local;
+	if ( caller == null ) return;
+
+	using ( Rpc.FilterInclude( c => c == caller ) )
+	{
+		DropHeldToWorldResult( itemId ?? "", moved, fromSlot );
+	}
+}
+
+[Rpc.Broadcast]
+private void DropHeldToWorldResult( string itemId, int moved, int fromSlot )
+{
+	if ( moved <= 0 ) return;
+
+	if ( UiDragContext.HasItem
+		&& UiDragContext.SourceKind == UiDragSourceKind.Inventory
+		&& UiDragContext.SourceIndex == fromSlot
+		&& string.Equals( UiDragContext.HeldItemId, itemId, StringComparison.OrdinalIgnoreCase ) )
+	{
+		UiDragContext.TakeFromHand( moved );
+	}
+}
+
+	
+	
 
 	// ---------------- Spawn pickup ----------------
 
@@ -373,5 +520,8 @@ public sealed class InventoryComponent : Component
 			remaining -= dropNow;
 		}
 	}
-
+	
+	
+	
+	
 }

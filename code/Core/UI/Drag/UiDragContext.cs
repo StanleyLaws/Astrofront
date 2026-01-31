@@ -16,6 +16,14 @@ public static class UiDragContext
     public static UiDragSourceKind SourceKind { get; private set; } = UiDragSourceKind.None;
     public static int SourceIndex { get; private set; } = -1;
 
+    // ✅ Incrémente à chaque changement pour permettre aux panels de se rafraîchir proprement
+    public static int Version { get; private set; } = 0;
+
+    private static void Bump()
+    {
+        Version++;
+    }
+
     public static void BeginHold( string itemId, int amount, UiDragSourceKind kind, int sourceIndex )
     {
         if ( string.IsNullOrEmpty( itemId ) || amount <= 0 )
@@ -25,6 +33,8 @@ public static class UiDragContext
         HeldAmount = amount;
         SourceKind = kind;
         SourceIndex = sourceIndex;
+
+        Bump();
 
         Log.Info( $"[UiDragContext] BeginHold item={itemId}, amount={amount}, source={kind}, idx={sourceIndex}" );
     }
@@ -37,17 +47,25 @@ public static class UiDragContext
         if ( HeldAmount <= 0 )
             Clear();
         else
+        {
+            Bump();
             Log.Info( $"[UiDragContext] TakeFromHand left={HeldAmount}" );
+        }
     }
 
     public static void Clear()
     {
+        if ( !HasItem && SourceKind == UiDragSourceKind.None && SourceIndex == -1 )
+            return;
+
         Log.Info( "[UiDragContext] Clear()" );
 
         HeldItemId = "";
         HeldAmount = 0;
         SourceKind = UiDragSourceKind.None;
         SourceIndex = -1;
+
+        Bump();
     }
 }
 

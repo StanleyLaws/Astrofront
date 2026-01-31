@@ -256,92 +256,153 @@
     }
 
     private void HandlePrimaryPlace( SlotData slot, int index )
-    {
-        if ( !UiDragContext.HasItem ) return;
+{
+	if ( !UiDragContext.HasItem ) return;
 
-        var heldId = UiDragContext.HeldItemId;
-        var heldAmount = UiDragContext.HeldAmount;
-        var fromInventory = UiDragContext.SourceKind == UiDragSourceKind.Inventory;
+	var heldId = UiDragContext.HeldItemId;
+	var heldAmount = UiDragContext.HeldAmount;
+	var fromInventory = UiDragContext.SourceKind == UiDragSourceKind.Inventory;
 
-        if ( string.IsNullOrEmpty( heldId ) || heldAmount <= 0 )
-        {
-            UiDragContext.Clear();
-            return;
-        }
+	if ( string.IsNullOrEmpty( heldId ) || heldAmount <= 0 )
+	{
+		UiDragContext.Clear();
+		return;
+	}
 
-        bool slotHasItem = !string.IsNullOrEmpty( slot.ItemId ) && slot.Amount > 0;
+	bool slotHasItem = !string.IsNullOrEmpty( slot.ItemId ) && slot.Amount > 0;
 
-        if ( !slotHasItem )
-        {
-            Slots[index] = new SlotData { ItemId = heldId, Amount = heldAmount };
-            UiDragContext.Clear();
+	// ✅ Helper local: déclenche le drop autoritaire si la source est inventaire
+	void CommitInvToWorld( int amount )
+	{
+		if ( !fromInventory ) return;
 
-            if ( fromInventory )
-                UiLootInventoryBridge.RequestSpawnToWorld( heldId, heldAmount );
+		var scene = Game.ActiveScene;
+		if ( scene == null ) return;
 
-            return;
-        }
+		var ps = scene.GetAllComponents<PlayerState>()
+			.FirstOrDefault( p => p != null
+							   && !p.IsProxy
+							   && p.GameObject != null
+							   && (p.GameObject.Tags.Has( "localplayer" )
+								   || (Connection.Local != null && p.Network?.Owner == Connection.Local)) );
 
-        if ( slot.ItemId == heldId )
-        {
-            slot.Amount += heldAmount;
-            Slots[index] = slot;
-            UiDragContext.Clear();
+		var inv = ps?.GameObject?.Components.Get<InventoryComponent>( FindMode.EverythingInSelfAndDescendants );
+		if ( inv == null ) return;
 
-            if ( fromInventory )
-                UiLootInventoryBridge.RequestSpawnToWorld( heldId, heldAmount );
+		inv.RequestDropHeldToWorldHost( UiDragContext.SourceIndex, heldId, amount );
+	}
 
-            return;
-        }
+	if ( !slotHasItem )
+	{
+		Slots[index] = new SlotData { ItemId = heldId, Amount = heldAmount };
 
-        var tmpId = slot.ItemId;
-        var tmpAmt = slot.Amount;
+		// ⚠️ Ne clear pas si inventaire: le host va décrémenter (DropHeldToWorldResult)
+		if ( fromInventory )
+			CommitInvToWorld( heldAmount );
+		else
+			UiDragContext.Clear();
 
-        Slots[index] = new SlotData { ItemId = heldId, Amount = heldAmount };
-        UiDragContext.BeginHold( tmpId, tmpAmt, UiDragSourceKind.LootPanel, index );
+		return;
+	}
 
-        if ( fromInventory )
-            UiLootInventoryBridge.RequestSpawnToWorld( heldId, heldAmount );
-    }
+	if ( slot.ItemId == heldId )
+	{
+		slot.Amount += heldAmount;
+		Slots[index] = slot;
+
+		if ( fromInventory )
+			CommitInvToWorld( heldAmount );
+		else
+			UiDragContext.Clear();
+
+		return;
+	}
+
+	// Swap visuel dans le panel (UI), mais attention :
+	// - si source = inventaire, on "commit" l'ancien held vers le monde
+	// - et on prend en main l'ancien slot (qui est du loot panel)
+	var tmpId = slot.ItemId;
+	var tmpAmt = slot.Amount;
+
+	Slots[index] = new SlotData { ItemId = heldId, Amount = heldAmount };
+
+	if ( fromInventory )
+	{
+		CommitInvToWorld( heldAmount );
+		// nouvelle main = loot panel (UI only)
+		UiDragContext.BeginHold( tmpId, tmpAmt, UiDragSourceKind.LootPanel, index );
+	}
+	else
+	{
+		// main venait déjà du loot panel
+		UiDragContext.BeginHold( tmpId, tmpAmt, UiDragSourceKind.LootPanel, index );
+	}
+}
+
 
     private void HandleSecondaryPlace( SlotData slot, int index )
-    {
-        if ( !UiDragContext.HasItem ) return;
+{
+	if ( !UiDragContext.HasItem ) return;
 
-        var heldId = UiDragContext.HeldItemId;
-        var heldAmount = UiDragContext.HeldAmount;
-        var fromInventory = UiDragContext.SourceKind == UiDragSourceKind.Inventory;
+	var heldId = UiDragContext.HeldItemId;
+	var heldAmount = UiDragContext.HeldAmount;
+	var fromInventory = UiDragContext.SourceKind == UiDragSourceKind.Inventory;
 
-        if ( string.IsNullOrEmpty( heldId ) || heldAmount <= 0 )
-        {
-            UiDragContext.Clear();
-            return;
-        }
+	if ( string.IsNullOrEmpty( heldId ) || heldAmount <= 0 )
+	{
+		UiDragContext.Clear();
+		return;
+	}
 
-        bool slotHasItem = !string.IsNullOrEmpty( slot.ItemId ) && slot.Amount > 0;
+	bool slotHasItem = !string.IsNullOrEmpty( slot.ItemId ) && slot.Amount > 0;
 
-        if ( !slotHasItem )
-        {
-            Slots[index] = new SlotData { ItemId = heldId, Amount = 1 };
-            UiDragContext.TakeFromHand( 1 );
+	// ✅ Helper local: drop autoritaire si source inventaire
+	void CommitInvToWorld( int amount )
+	{
+		if ( !fromInventory ) return;
 
-            if ( fromInventory )
-                UiLootInventoryBridge.RequestSpawnToWorld( heldId, 1 );
+		var scene = Game.ActiveScene;
+		if ( scene == null ) return;
 
-            return;
-        }
+		var ps = scene.GetAllComponents<PlayerState>()
+			.FirstOrDefault( p => p != null
+							   && !p.IsProxy
+							   && p.GameObject != null
+							   && (p.GameObject.Tags.Has( "localplayer" )
+								   || (Connection.Local != null && p.Network?.Owner == Connection.Local)) );
 
-        if ( slot.ItemId == heldId )
-        {
-            slot.Amount += 1;
-            Slots[index] = slot;
+		var inv = ps?.GameObject?.Components.Get<InventoryComponent>( FindMode.EverythingInSelfAndDescendants );
+		if ( inv == null ) return;
 
-            UiDragContext.TakeFromHand( 1 );
+		inv.RequestDropHeldToWorldHost( UiDragContext.SourceIndex, heldId, amount );
+	}
 
-            if ( fromInventory )
-                UiLootInventoryBridge.RequestSpawnToWorld( heldId, 1 );
+	if ( !slotHasItem )
+	{
+		Slots[index] = new SlotData { ItemId = heldId, Amount = 1 };
 
-            return;
-        }
-    }
+		if ( fromInventory )
+			CommitInvToWorld( 1 );
+		else
+			UiDragContext.TakeFromHand( 1 );
+
+		return;
+	}
+
+	if ( slot.ItemId == heldId )
+	{
+		slot.Amount += 1;
+		Slots[index] = slot;
+
+		if ( fromInventory )
+			CommitInvToWorld( 1 );
+		else
+			UiDragContext.TakeFromHand( 1 );
+
+		return;
+	}
+
+	// slot différent : on ne fait rien en secondaire
+}
+
 }

@@ -94,30 +94,16 @@ public static class UiLootInventoryBridge
 	[Rpc.Host]
 	public static void RequestSpawnToWorld( string itemId, int amount )
 	{
+		// ⚠️ Cette méthode est désormais interdite car elle ne retire d'aucune source.
+		// Utiliser InventoryComponent.RequestDropHeldToWorldHost(fromSlot, itemId, amount)
+		// ou une transaction autoritaire similaire (chest->world, merchant->world, etc.)
+
 		var caller = Rpc.Caller ?? Connection.Local;
 		if ( caller == null ) return;
 
-		if ( string.IsNullOrEmpty( itemId ) || amount <= 0 )
-			return;
-
-		var scene = Game.ActiveScene;
-		if ( scene == null ) return;
-
-		var ps = scene.GetAllComponents<PlayerState>()
-			.FirstOrDefault( p => p != null && p.Network != null && p.Network.Owner == caller );
-
-		if ( ps == null ) return;
-
-		SpawnPickupsInFrontOf( scene, ps, itemId, amount );
-
-		// retour client (juste log)
-		using ( Rpc.FilterInclude( c => c == caller ) )
-		{
-			SpawnToWorldResult( itemId, amount );
-		}
-
-		Log.Info( $"[Inv->World] spawn +{amount} {itemId} ({caller.DisplayName})" );
+		Log.Warning( $"[Inv->World] RequestSpawnToWorld blocked (unsafe). item={itemId} amount={amount} caller={caller.DisplayName}" );
 	}
+
 
 	// ========= Client feedback =========
 
