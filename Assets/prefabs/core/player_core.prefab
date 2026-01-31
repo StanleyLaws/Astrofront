@@ -181,7 +181,7 @@
       {
         "__type": "Astrofront.PlayerAppearance",
         "__guid": "236d7346-3e42-4acd-a6c8-a078acbcb89a",
-        "__enabled": false,
+        "__enabled": true,
         "Flags": 0,
         "Body": {
           "_type": "component",
