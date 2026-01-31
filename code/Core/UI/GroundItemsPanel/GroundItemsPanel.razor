@@ -11,18 +11,26 @@
 <div class="ground-items-root">
 
     <div class="ground-items-header">
-        <span class="ground-items-title">GROUND ITEMS</span>
-    </div>
 
-    <div class="ground-items-subheader">
-        <div class="pager-controls">
+        <div class="title-block">
+            <span class="ground-items-title">GROUND ITEMS</span>
+            <span class="ground-items-subtitle">Nearby loot</span>
+        </div>
+
+        <div class="pager">
+            <div class="page-btn chev @(CurrentPage <= 0 ? "disabled" : "")"
+                 onclick=@(() => { if ( CurrentPage > 0 ) PrevPage(); })>
+                ‹
+            </div>
+
             <div class="page-indicator">@($"{CurrentPage + 1}/{TotalPages}")</div>
 
-            <div class="pager-buttons">
-                <div class="page-btn @(CurrentPage <= 0 ? "disabled" : "")" @onclick="PrevPage">Prev</div>
-                <div class="page-btn @(CurrentPage >= TotalPages - 1 ? "disabled" : "")" @onclick="NextPage">Next</div>
+            <div class="page-btn chev @(CurrentPage >= TotalPages - 1 ? "disabled" : "")"
+                 onclick=@(() => { if ( CurrentPage < TotalPages - 1 ) NextPage(); })>
+                ›
             </div>
         </div>
+
     </div>
 
     <div class="grid-4x4">
@@ -42,6 +50,8 @@
     </div>
 
 </div>
+
+
 
 @code
 {
@@ -138,7 +148,6 @@
     {
         Slots.Clear();
 
-        // Si on tient déjà du loot en main, on le “cache” de la liste
         int heldToHide = 0;
         string heldId = "";
 
@@ -150,7 +159,6 @@
 
         if ( items != null && items.Length > 0 )
         {
-            // Groupe par ItemId (pas par GO)
             var grouped = items
                 .Where( it => !string.IsNullOrEmpty( it.ItemId ) && it.Amount > 0 )
                 .GroupBy( it => it.ItemId )
@@ -173,7 +181,6 @@
             Slots.AddRange( grouped );
         }
 
-        // Padding pages
         if ( Slots.Count <= 0 )
         {
             for ( int i = 0; i < PageSize; i++ )
@@ -195,7 +202,6 @@
 
     public void OnDragDrop( int fromIndex, int toIndex )
     {
-        // UI-only reorder (cosmétique)
         if ( fromIndex < 0 || fromIndex >= Slots.Count ) return;
         if ( toIndex < 0 || toIndex >= Slots.Count ) return;
         if ( fromIndex == toIndex ) return;
@@ -219,7 +225,6 @@
 
         bool slotHasItem = !string.IsNullOrEmpty( slot.ItemId ) && slot.Amount > 0;
 
-        // Main vide => prendre
         if ( !UiDragContext.HasItem )
         {
             if ( !slotHasItem ) return;
@@ -242,7 +247,6 @@
             }
         }
 
-        // Main pleine => déposer sur le sol
         if ( primary )
             HandlePrimaryPlace( slot, index );
         else
@@ -290,7 +294,6 @@
             return;
         }
 
-        // swap (UI)
         var tmpId = slot.ItemId;
         var tmpAmt = slot.Amount;
 

@@ -512,18 +512,6 @@
           "OnComponentUpdate": null
         },
         {
-          "__type": "Astrofront.HealthRootPanel",
-          "__guid": "b2a5441c-2797-48f7-8a49-0902ff3625b9",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
           "__type": "Astrofront.InventoryHUD",
           "__guid": "9e32c08a-95ac-4afd-8639-9c485d6caccc",
           "__enabled": true,
@@ -562,6 +550,18 @@
         {
           "__type": "Astrofront.HeldItemCursor",
           "__guid": "e1ebca09-659d-4c79-a64d-6659da5b2115",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.VitalsRootPanel",
+          "__guid": "483674db-1367-4908-bd9d-16c0fe4804a6",
           "__enabled": true,
           "Flags": 0,
           "OnComponentDestroy": null,

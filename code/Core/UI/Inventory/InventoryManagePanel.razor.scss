@@ -1,105 +1,77 @@
 .invmanage-root {
   position: absolute;
   left: 50%;
-  bottom: 180px;
+  bottom: 200px;
   transform: translateX(-50%);
 
-  width: 520px;
-  height: 160px;
+  /* ====== DIMENSIONS (doivent couvrir 5 slots de 136px) ====== */
+  width: 720px;  /* CHANGE ICI si besoin */
+  height: 190px; /* CHANGE ICI si besoin */
 
-  background-color: rgba(10, 10, 16, 0.92);
-  border-radius: 12px;
-  border: 2px solid rgba(120, 180, 255, 0.75);
+  padding: 18px;
 
-  padding: 12px 16px;
+  display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   justify-content: flex-start;
 
   pointer-events: all;
   z-index: 9000;
+
+  /* ====== STYLE identique au GroundItemsPanel ====== */
+  backdrop-filter: blur(1px);
+
+  background-color: rgba(22, 31, 40, 0.98);
+  border-radius: 10px;
+  border: 1px solid rgba(120, 180, 255, 0.18);
+
+  box-shadow: 0px 18px 45px rgba(0, 0, 0, 0.65);
 }
 
+/* HEADER */
 .invmanage-header {
+  width: 100%;
+  height: 54px;
+
+  display: flex;
   flex-direction: row;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+
+  border-bottom: 1px solid rgba(120, 180, 255, 0.12);
+
+  position: relative;
+  z-index: 50;
 }
 
 .invmanage-header .title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: rgba(255, 255, 255, 0.92);
 }
 
-.invmanage-header .hint {
-  font-size: 12px;
-  color: rgba(220, 220, 255, 0.7);
-}
-
+/* BAR */
 .invmanage-bar {
+  /* fond “cadre” comme ton loot panel (sans border) */
+  width: 700px;  /* ~ 5*136=680, on laisse respirer */
+  height: 110px; /* doit contenir 96px de slot + un peu */
+
+  padding: 8px;
+
+  background-color: rgba(22, 28, 34, 0.80);
+  border-radius: 10px;
+  border: 0px;
+
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
-}
 
-
-.invmanage-slot {
-  width: 84px;
-  height: 72px;
-  border-radius: 10px;
-  background-color: rgba(40, 40, 52, 0.65);
-  border: 2px solid rgba(255, 255, 255, 0.12);
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
   position: relative;
-
-  margin-right: 8px;
-}
-
-.invmanage-slot:last-child {
-  margin-right: 0;
-}
-
-.invmanage-slot.has-item {
-  background-color: rgba(56, 56, 80, 0.95);
-}
-
-.invmanage-slot:hover {
-  border-color: rgba(255, 220, 120, 0.9);
-}
-
-.invmanage-slot .slot-index {
-  position: absolute;
-  left: 6px;
-  bottom: 6px;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.invmanage-slot .slot-empty {
-  font-size: 18px;
-  color: rgba(255, 255, 255, 0.35);
-}
-
-.invmanage-slot .slot-content {
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.invmanage-slot .item-name {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 2px;
-}
-
-.invmanage-slot .item-count {
-  font-size: 18px;
-  font-weight: 700;
-  color: #ffffff;
+  z-index: 1;
 }

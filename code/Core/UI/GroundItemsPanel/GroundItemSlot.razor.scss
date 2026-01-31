@@ -6,31 +6,62 @@
   align-items: center;
   justify-content: center;
 
-  margin: 0;
-  padding: 0;
-
-  border-radius: 14px;
-  background-color: rgba(10, 10, 16, 0.30);
-  border: 2px solid rgba(255, 255, 255, 0.10);
-
   position: relative;
   pointer-events: all;
 
-  transition: transform 0.16s ease,
-              background-color 0.16s ease,
-              border-color 0.16s ease,
-              opacity 0.16s ease;
+  /* ================= SPACING =================
+     CHANGE ICI : espace entre les slots
+     - 6px léger
+     - 8px moyen (recommandé)
+     - 10px large
+  */
+  padding: 3px; /* CHANGE ICI et match avec left, right, top, botom juste en dessous*/
+
+  transition: transform 0.12s ease;
 }
 
-.ground-item-slot.empty { opacity: 0.35; }
-.ground-item-slot.has-item { opacity: 1.0; }
+/* La tuile interne (gris uni) */
+.ground-item-slot::before {
+  content: "";
+  position: absolute;
 
-.ground-item-slot.hover {
-  background-color: rgba(20, 20, 30, 0.55);
-  border-color: rgba(255, 200, 80, 0.80);
+  /* on respecte le padding pour créer le "gap" visuel */
+  left: 3px;   /* DOIT matcher padding */
+  right: 3px;  /* DOIT matcher padding */
+  top: 3px;    /* DOIT matcher padding */
+  bottom: 3px; /* DOIT matcher padding */
+
+  border-radius: 8px;
+
+  /* ================= TILE COLOR ================= */
+  background-color: rgba(74, 74, 78, 0.96); /* CHANGE ICI (gris uni) */
+
+  /* shadow soft moderne */
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
+
+  transition: background-color 0.12s ease,
+              transform 0.12s ease,
+              box-shadow 0.12s ease;
+
+  pointer-events: none;
+  z-index: 1;
 }
 
-/* ICON (image injectée par C#) */
+/* Empty plus sombre */
+.ground-item-slot.empty::before {
+  background-color: rgba(58, 58, 62, 0.92); /* CHANGE ICI */
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+}
+
+/* Hover robuste : classe + :hover */
+.ground-item-slot.hover::before,
+.ground-item-slot:hover::before {
+  background-color: rgba(102, 110, 122, 0.98); /* CHANGE ICI hover */
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.30);
+}
+
+/* ICON */
 .ground-item-slot .slot-icon {
   width: 86px;
   height: 86px;
@@ -39,28 +70,34 @@
   background-repeat: no-repeat;
   background-position: center;
 
-  background-image: none; /* important */
-  opacity: 0.65;
-  filter: blur(0.35px);
-  pointer-events: none;
+  opacity: 0.95;
+  pointer-events: none; 
+
+  position: relative;
+  z-index: 3; /* au-dessus de la tuile */
 }
 
-.ground-item-slot.hover .slot-icon {
-  opacity: 1.0;
-  filter: blur(0);
+.ground-item-slot.empty .slot-icon {
+  opacity: 0.25;
 }
 
 /* STACK */
 .slot-stack {
   position: absolute;
   top: 10px;
-  left: 30px;
+  left: 14px;
 
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  padding: 4px 7px;
+  border-radius: 8px;
 
-  color: rgba(160, 210, 255, 0.95);
-  text-shadow: 0 0 6px rgba(90, 150, 255, 0.35);
+  background-color: rgba(20, 24, 30, 0.85);
+
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+
+  color: rgba(235, 245, 255, 0.95);
+
   pointer-events: none;
+  z-index: 4; /* au-dessus de tout */
 }

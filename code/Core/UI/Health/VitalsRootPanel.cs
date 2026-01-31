@@ -3,15 +3,15 @@ using Sandbox.UI;
 
 namespace Astrofront;
 
-public sealed class HealthRootPanel : PanelComponent
+public sealed class VitalsRootPanel : PanelComponent
 {
     public Panel Root { get; private set; }
 
     protected override void OnTreeFirstBuilt()
     {
-        if ( Panel == null )
+        if ( Panel == null ) 
         {
-            Log.Warning($"{nameof(HealthRootPanel)}: Panel is null.");
+            Log.Warning($"{nameof(VitalsRootPanel)}: Panel is null.");
             return;
         }
 
@@ -21,7 +21,7 @@ public sealed class HealthRootPanel : PanelComponent
             Root = null;
         }
 
-        Root = new VitalsBar(); 
+        Root = new VitalsBar();
 
         Panel.AddClass( "fullscreen" );
         Panel.AddChild( Root );
