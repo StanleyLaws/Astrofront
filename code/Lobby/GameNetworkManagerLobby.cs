@@ -3,7 +3,7 @@ using Sandbox;
 namespace Astrofront;
 
 /// Gère le spawn des joueurs quand une connexion devient active (host + clients).
-public sealed class GameNetworkManager : Component, Component.INetworkListener
+public sealed class GameNetworkManagerLobby : Component, Component.INetworkListener
 {
     [Property, Title("Player Prefab")]
     public GameObject PlayerPrefab { get; set; }
@@ -32,6 +32,9 @@ public sealed class GameNetworkManager : Component, Component.INetworkListener
 
         var player = PlayerPrefab.Clone( tr );
         player.NetworkSpawn( connection );
+		Lobby_Rules.ApplyHost( player );
+		Lobby_SboxController_Rules.ApplyLocal( player );
+
 
         Log.Info($"[GameNetworkManager] Spawned player for {connection.DisplayName}");
     }

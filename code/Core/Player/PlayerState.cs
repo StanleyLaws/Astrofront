@@ -5,6 +5,10 @@ namespace Astrofront;
 
 public enum Team { None = -1, Red = 0, Blue = 1 }
 
+/// <summary>
+/// Données joueur synchronisées + API Host neutre.
+/// IMPORTANT: aucune lecture d'input ici (les inputs sont gérés par des components dédiés).
+/// </summary>
 public sealed class PlayerState : Component
 {
 	[Sync( SyncFlags.FromHost )] public Team Team { get; private set; } = Team.None;
@@ -13,7 +17,7 @@ public sealed class PlayerState : Component
 	[Sync( SyncFlags.FromHost )] public int MaxHealth { get; private set; } = 100;
 	[Sync( SyncFlags.FromHost )] public int Health { get; private set; } = 100;
 
-	// ✅ Energy (neutre)
+	// Energy (neutre)
 	[Sync( SyncFlags.FromHost )] public int MaxEnergy { get; private set; } = 100;
 	[Sync( SyncFlags.FromHost )] public int Energy { get; private set; } = 100;
 
@@ -26,34 +30,9 @@ public sealed class PlayerState : Component
 
 	protected override void OnStart()
 	{
+		// Sert à retrouver le joueur local facilement côté UI / rules bootstrap.
 		if ( !IsProxy )
 			GameObject.Tags.Add( "localplayer" );
-	}
-
-	protected override void OnUpdate()
-	{
-		if ( IsProxy ) return;
-		if ( UiModalController.IsUiLockedLocal ) return;
-
-		// Test déjà existant
-		if ( Input.Pressed( "Flashlight" ) )
-		{
-			DamageSelfTestHost( 0.05f );
-		}
-
-		// ✅ Test énergie (optionnel, juste pour voir la barre bouger)
-		// Exemple : Sprint => -5 énergie
-		if ( Input.Pressed( "Test" ) )
-		{
-			AddEnergyHost( -5 );
-		}
-	}
-
-	[Rpc.Host]
-	private void DamageSelfTestHost( float fraction )
-	{
-		var amount = (int)(MaxHealth * fraction);
-		AddHealthHost( -amount );
 	}
 
 	// --- API Host neutre ---
@@ -83,7 +62,7 @@ public sealed class PlayerState : Component
 		SetHealthHost( Health + delta );
 	}
 
-	// ✅ Energy API Host neutre
+	// --- Energy API Host neutre ---
 
 	public void SetMaxEnergyHost( int value )
 	{

@@ -40,6 +40,284 @@
       "Children": []
     },
     {
+      "__guid": "71ca9a01-1a68-4f77-9667-dde12bbe6850",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "NeworkRoot",
+      "Position": "-59.57906,27.59267,27.4771",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "Astrofront.MatchManager",
+          "__guid": "11500bfd-cb5b-4403-b4a2-fcaaacd73caf",
+          "__enabled": true,
+          "Flags": 0,
+          "BlueSpawns": [
+            {
+              "_type": "gameobject",
+              "go": "e796590c-1340-4ad2-9a70-cdb0261d2828"
+            }
+          ],
+          "CountdownStart": 10,
+          "MaxPlayers": 2,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "RedSpawns": [
+            {
+              "_type": "gameobject",
+              "go": "1e1a5667-5764-43ee-a7fc-e9f8c4784f19"
+            }
+          ]
+        },
+        {
+          "__type": "Astrofront.GameNetworkManagerAF",
+          "__guid": "370e08c1-3cd1-4daa-ac1a-adbd076531d6",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "PlayerPrefab": {
+            "_type": "gameobject",
+            "prefab": "prefabs/core/player_core.prefab"
+          },
+          "SpawnPoints": [
+            {
+              "_type": "gameobject",
+              "go": "1e1a5667-5764-43ee-a7fc-e9f8c4784f19"
+            }
+          ],
+          "SpectatorPrefab": {
+            "_type": "gameobject",
+            "prefab": "prefabs/modes/astrofront/player/spectator.prefab"
+          }
+        },
+        {
+          "__type": "Astrofront.AutoHostSession",
+          "__guid": "59a40c25-03e5-40d4-b325-d22a1e615a57",
+          "__enabled": false,
+          "Flags": 0,
+          "Hostname": "AF_1x1_01",
+          "MaxPlayers": 12,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "Public": true
+        },
+        {
+          "__type": "Astrofront.AutoListen",
+          "__guid": "4bdfd92f-6867-4d32-90c8-370ade30c5b6",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        }
+      ],
+      "Children": []
+    },
+    {
+      "__guid": "918c26bc-c6f3-4739-b6c6-77a93b1cd337",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "_GameSystems",
+      "Position": "-126.4293,-187.5311,115.5769",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "Astrofront.ChatSystem",
+          "__guid": "ace006c8-072b-4294-a27d-5006815f019b",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.StardustSystem",
+          "__guid": "f17e9d4d-98e2-4bf2-89ba-a330a1ce751b",
+          "__enabled": false,
+          "Flags": 0,
+          "AnnounceInChat": true,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "PointsPerTick": 1,
+          "SecondsPerTick": 60
+        },
+        {
+          "__type": "Astrofront.UiModalController",
+          "__guid": "9151f431-e409-4755-b32f-23aab196f774",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.ModeRulesBootstrap",
+          "__guid": "e3df947e-b42d-4d28-9ca4-4dcb4be1340c",
+          "__enabled": true,
+          "Flags": 0,
+          "Mode": "Astrofront",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        }
+      ],
+      "Children": []
+    },
+    {
+      "__guid": "42e3cbb3-3aef-4420-90d5-c5e99181679a",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "_UIRoot",
+      "Position": "-126.4293,-187.5311,115.5769",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "Sandbox.ScreenPanel",
+          "__guid": "2ce682a0-4ec2-4a82-9ac8-3826648782c5",
+          "__enabled": true,
+          "Flags": 0,
+          "AutoScreenScale": true,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "Opacity": 1,
+          "Scale": 1,
+          "ScaleStrategy": "ConsistentHeight",
+          "TargetCamera": null,
+          "ZIndex": 100
+        },
+        {
+          "__type": "Astrofront.Chat",
+          "__guid": "172dc94d-1f1b-4c5d-a202-3efeb1ee738e",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.InventoryHUD",
+          "__guid": "9e32c08a-95ac-4afd-8639-9c485d6caccc",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.InventoryManagePanel",
+          "__guid": "917d509f-b993-49b1-afd6-3ff774144349",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.GroundItemsPanel",
+          "__guid": "3c4f477a-1f7e-4278-a762-949a9d979b53",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.HeldItemCursor",
+          "__guid": "e1ebca09-659d-4c79-a64d-6659da5b2115",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.VitalsRootPanel",
+          "__guid": "483674db-1367-4908-bd9d-16c0fe4804a6",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        }
+      ],
+      "Children": []
+    },
+    {
       "__guid": "bfc59c12-1ed2-4f91-8956-a95a315eac3c",
       "__version": 2,
       "Flags": 0,
@@ -368,11 +646,11 @@
       "Children": []
     },
     {
-      "__guid": "71ca9a01-1a68-4f77-9667-dde12bbe6850",
+      "__guid": "a50c7a48-695e-44e1-80b6-2c26e33ac729",
       "__version": 2,
       "Flags": 0,
-      "Name": "NeworkRoot",
-      "Position": "-59.57906,27.59267,27.4771",
+      "Name": "Dispenser_Blue",
+      "Position": "168.5664,-138.7457,36.32709",
       "Rotation": "0,0,0,1",
       "Scale": "1,1,1",
       "Tags": "",
@@ -384,277 +662,31 @@
       "OwnerTransfer": 1,
       "Components": [
         {
-          "__type": "Astrofront.MatchManager",
-          "__guid": "11500bfd-cb5b-4403-b4a2-fcaaacd73caf",
+          "__type": "Sandbox.ModelRenderer",
+          "__guid": "d40805e7-f385-4d88-8655-fd49c5e89885",
           "__enabled": true,
           "Flags": 0,
-          "BlueSpawns": [
-            {
-              "_type": "gameobject",
-              "go": "e796590c-1340-4ad2-9a70-cdb0261d2828"
-            }
-          ],
-          "CountdownStart": 10,
-          "MaxPlayers": 2,
+          "BodyGroups": 18446744073709551615,
+          "CreateAttachments": false,
+          "LodOverride": null,
+          "MaterialGroup": null,
+          "MaterialOverride": null,
+          "Materials": null,
+          "Model": "models/dev/sphere.vmdl",
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
           "OnComponentFixedUpdate": null,
           "OnComponentStart": null,
           "OnComponentUpdate": null,
-          "RedSpawns": [
-            {
-              "_type": "gameobject",
-              "go": "1e1a5667-5764-43ee-a7fc-e9f8c4784f19"
-            }
-          ]
-        },
-        {
-          "__type": "Astrofront.GameNetworkManagerAF",
-          "__guid": "370e08c1-3cd1-4daa-ac1a-adbd076531d6",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "PlayerPrefab": {
-            "_type": "gameobject",
-            "prefab": "prefabs/core/player_core.prefab"
+          "RenderOptions": {
+            "GameLayer": true,
+            "OverlayLayer": false,
+            "BloomLayer": false,
+            "AfterUILayer": false
           },
-          "SpawnPoints": [
-            {
-              "_type": "gameobject",
-              "go": "1e1a5667-5764-43ee-a7fc-e9f8c4784f19"
-            }
-          ],
-          "SpectatorPrefab": {
-            "_type": "gameobject",
-            "prefab": "prefabs/modes/astrofront/player/spectator.prefab"
-          }
-        },
-        {
-          "__type": "Astrofront.AutoHostSession",
-          "__guid": "59a40c25-03e5-40d4-b325-d22a1e615a57",
-          "__enabled": false,
-          "Flags": 0,
-          "Hostname": "AF_1x1_01",
-          "MaxPlayers": 12,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "Public": true
-        },
-        {
-          "__type": "Astrofront.AutoListen",
-          "__guid": "4bdfd92f-6867-4d32-90c8-370ade30c5b6",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        }
-      ],
-      "Children": []
-    },
-    {
-      "__guid": "42e3cbb3-3aef-4420-90d5-c5e99181679a",
-      "__version": 2,
-      "Flags": 0,
-      "Name": "_UIRoot",
-      "Position": "-126.4293,-187.5311,115.5769",
-      "Rotation": "0,0,0,1",
-      "Scale": "1,1,1",
-      "Tags": "",
-      "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkFlags": 0,
-      "NetworkOrphaned": 0,
-      "NetworkTransmit": true,
-      "OwnerTransfer": 1,
-      "Components": [
-        {
-          "__type": "Sandbox.ScreenPanel",
-          "__guid": "2ce682a0-4ec2-4a82-9ac8-3826648782c5",
-          "__enabled": true,
-          "Flags": 0,
-          "AutoScreenScale": true,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "Opacity": 1,
-          "Scale": 1,
-          "ScaleStrategy": "ConsistentHeight",
-          "TargetCamera": null,
-          "ZIndex": 100
-        },
-        {
-          "__type": "Astrofront.Chat",
-          "__guid": "172dc94d-1f1b-4c5d-a202-3efeb1ee738e",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
-          "__type": "Astrofront.InventoryHUD",
-          "__guid": "9e32c08a-95ac-4afd-8639-9c485d6caccc",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
-          "__type": "Astrofront.InventoryManagePanel",
-          "__guid": "917d509f-b993-49b1-afd6-3ff774144349",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
-          "__type": "Astrofront.GroundItemsPanel",
-          "__guid": "3c4f477a-1f7e-4278-a762-949a9d979b53",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
-          "__type": "Astrofront.HeldItemCursor",
-          "__guid": "e1ebca09-659d-4c79-a64d-6659da5b2115",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
-          "__type": "Astrofront.VitalsRootPanel",
-          "__guid": "483674db-1367-4908-bd9d-16c0fe4804a6",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        }
-      ],
-      "Children": []
-    },
-    {
-      "__guid": "918c26bc-c6f3-4739-b6c6-77a93b1cd337",
-      "__version": 2,
-      "Flags": 0,
-      "Name": "_GameSystems",
-      "Position": "-126.4293,-187.5311,115.5769",
-      "Rotation": "0,0,0,1",
-      "Scale": "1,1,1",
-      "Tags": "",
-      "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkFlags": 0,
-      "NetworkOrphaned": 0,
-      "NetworkTransmit": true,
-      "OwnerTransfer": 1,
-      "Components": [
-        {
-          "__type": "Astrofront.ChatSystem",
-          "__guid": "ace006c8-072b-4294-a27d-5006815f019b",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
-          "__type": "Astrofront.StardustSystem",
-          "__guid": "f17e9d4d-98e2-4bf2-89ba-a330a1ce751b",
-          "__enabled": false,
-          "Flags": 0,
-          "AnnounceInChat": true,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "PointsPerTick": 1,
-          "SecondsPerTick": 60
-        },
-        {
-          "__type": "Astrofront.UiInteractionController",
-          "__guid": "d98bf098-9d5f-445f-b9f5-f158569dbb87",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
-          "__type": "Astrofront.UiModalController",
-          "__guid": "9151f431-e409-4755-b32f-23aab196f774",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
-        },
-        {
-          "__type": "Astrofront.InventoryComponent",
-          "__guid": "a7529c8d-ec1f-4121-a7b8-d2ae50173d30",
-          "__enabled": true,
-          "Flags": 0,
-          "CapacitySpace": 10,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "SelectedIndex": 0,
-          "SlotCount": 5
+          "RenderType": "On",
+          "Tint": "0.11721,0.26205,0.6,1"
         }
       ],
       "Children": []
@@ -752,52 +784,6 @@
           "Children": []
         }
       ]
-    },
-    {
-      "__guid": "a50c7a48-695e-44e1-80b6-2c26e33ac729",
-      "__version": 2,
-      "Flags": 0,
-      "Name": "Dispenser_Blue",
-      "Position": "168.5664,-138.7457,36.32709",
-      "Rotation": "0,0,0,1",
-      "Scale": "1,1,1",
-      "Tags": "",
-      "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkFlags": 0,
-      "NetworkOrphaned": 0,
-      "NetworkTransmit": true,
-      "OwnerTransfer": 1,
-      "Components": [
-        {
-          "__type": "Sandbox.ModelRenderer",
-          "__guid": "d40805e7-f385-4d88-8655-fd49c5e89885",
-          "__enabled": true,
-          "Flags": 0,
-          "BodyGroups": 18446744073709551615,
-          "CreateAttachments": false,
-          "LodOverride": null,
-          "MaterialGroup": null,
-          "MaterialOverride": null,
-          "Materials": null,
-          "Model": "models/dev/sphere.vmdl",
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "RenderOptions": {
-            "GameLayer": true,
-            "OverlayLayer": false,
-            "BloomLayer": false,
-            "AfterUILayer": false
-          },
-          "RenderType": "On",
-          "Tint": "0.11721,0.26205,0.6,1"
-        }
-      ],
-      "Children": []
     }
   ],
   "SceneProperties": {

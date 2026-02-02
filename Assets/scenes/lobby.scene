@@ -20,7 +20,7 @@
         {
           "__type": "Astrofront.AutoHostSession",
           "__guid": "299238c3-127d-41cd-84a4-b53f887b259c",
-          "__enabled": true,
+          "__enabled": false,
           "Flags": 0,
           "Hostname": "Lobby",
           "MaxPlayers": 12,
@@ -31,28 +31,6 @@
           "OnComponentStart": null,
           "OnComponentUpdate": null,
           "Public": true
-        },
-        {
-          "__type": "Astrofront.GameNetworkManager",
-          "__guid": "7916246b-0cd0-45c3-b6b2-e638c22f1b66",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "PlayerPrefab": {
-            "_type": "gameobject",
-            "prefab": "prefabs/core/player.prefab"
-          },
-          "SpawnPoints": [
-            {
-              "_type": "gameobject",
-              "go": "12bdcaa6-944e-46c4-a9d3-8e9710cf27de"
-            }
-          ]
         },
         {
           "__type": "Astrofront.ChatSystem",
@@ -80,6 +58,138 @@
           "OnComponentUpdate": null,
           "PointsPerTick": 1,
           "SecondsPerTick": 60
+        },
+        {
+          "__type": "Astrofront.AutoListen",
+          "__guid": "42659e0a-8055-4283-bd4f-8ea8a9104ec5",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.GameNetworkManagerLobby",
+          "__guid": "d5370f89-a75e-4adb-97ca-288feb4b5519",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "PlayerPrefab": {
+            "_type": "gameobject",
+            "prefab": "prefabs/core/player_core.prefab"
+          },
+          "SpawnPoints": [
+            {
+              "_type": "gameobject",
+              "go": "12bdcaa6-944e-46c4-a9d3-8e9710cf27de"
+            }
+          ]
+        },
+        {
+          "__type": "Astrofront.UiModalController",
+          "__guid": "fc28395d-98a4-4a35-bc51-3fa7c281df85",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.ModeRulesBootstrap",
+          "__guid": "38395dcb-729e-42f0-b14f-5d7e7a0cd14a",
+          "__enabled": true,
+          "Flags": 0,
+          "Mode": "Lobby",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        }
+      ],
+      "Children": []
+    },
+    {
+      "__guid": "40d8cb8b-d350-4972-816b-9dc7e28f3d29",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "_UiRoot",
+      "Position": "-370.7299,-343.6471,272.5904",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "Sandbox.ScreenPanel",
+          "__guid": "47cf23c1-cd8a-44ff-bc07-1e982ca5d586",
+          "__enabled": true,
+          "Flags": 0,
+          "AutoScreenScale": true,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "Opacity": 1,
+          "Scale": 1,
+          "ScaleStrategy": "ConsistentHeight",
+          "TargetCamera": null,
+          "ZIndex": 100
+        },
+        {
+          "__type": "Astrofront.Chat",
+          "__guid": "c39af930-03de-4992-803e-4ba026bbbe14",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.InventoryHUD",
+          "__guid": "7bdcabd6-cf60-455c-b868-00909dadc006",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "Astrofront.VitalsRootPanel",
+          "__guid": "71062405-8725-4afc-a03e-b42f122808ed",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
         }
       ],
       "Children": []
@@ -120,6 +230,8 @@
           "__guid": "172caed1-d046-43b4-875f-e4c7863b1a32",
           "__enabled": true,
           "Flags": 0,
+          "__version": 1,
+          "BakedTexture": null,
           "Bounds": {
             "Mins": "-512,-512,-512",
             "Maxs": "512,512,512"
@@ -128,6 +240,7 @@
           "Feathering": 0.02,
           "FrameInterval": 5,
           "MaxDistance": 512,
+          "Mode": "CustomTexture",
           "MultiBounce": false,
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
@@ -135,8 +248,8 @@
           "OnComponentFixedUpdate": null,
           "OnComponentStart": null,
           "OnComponentUpdate": null,
+          "Priority": 0,
           "Projection": "Sphere",
-          "RenderDynamically": false,
           "Resolution": "Small",
           "Texture": "textures/cubemaps/default2.vtex",
           "TintColor": "1,1,1,1",
@@ -366,55 +479,6 @@
           "OnComponentStart": null,
           "OnComponentUpdate": null,
           "ZoneName": "PortalToGame"
-        }
-      ],
-      "Children": []
-    },
-    {
-      "__guid": "40d8cb8b-d350-4972-816b-9dc7e28f3d29",
-      "__version": 2,
-      "Flags": 0,
-      "Name": "_Ui_Chat",
-      "Position": "-370.7299,-343.6471,272.5904",
-      "Rotation": "0,0,0,1",
-      "Scale": "1,1,1",
-      "Tags": "",
-      "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkFlags": 0,
-      "NetworkOrphaned": 0,
-      "NetworkTransmit": true,
-      "OwnerTransfer": 1,
-      "Components": [
-        {
-          "__type": "Sandbox.ScreenPanel",
-          "__guid": "47cf23c1-cd8a-44ff-bc07-1e982ca5d586",
-          "__enabled": true,
-          "Flags": 0,
-          "AutoScreenScale": true,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "Opacity": 1,
-          "Scale": 1,
-          "ScaleStrategy": "ConsistentHeight",
-          "TargetCamera": null,
-          "ZIndex": 100
-        },
-        {
-          "__type": "Astrofront.Chat",
-          "__guid": "c39af930-03de-4992-803e-4ba026bbbe14",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
         }
       ],
       "Children": []

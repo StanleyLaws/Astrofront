@@ -4,18 +4,19 @@ namespace Astrofront;
 
 /// <summary>
 /// Gère uniquement la sélection de slot (HUD rapide) + drop 1 item.
-/// - Aucun UI
-/// - Juste des intentions d’input
+/// - Aucun UI panel
+/// - Juste des intentions d’input liées à la hotbar (invhud)
+/// - Respecte PlayerUiContext.invhud
 /// </summary>
-public sealed class InventoryInput : Component
+public sealed class InventoryHudInputController : Component
 {
 	private InventoryComponent _inv;
+	private PlayerUiContext _uiCtx;
 
 	protected override void OnStart()
 	{
-		_inv = GameObject.Components.Get<InventoryComponent>(
-			FindMode.InSelf | FindMode.InChildren
-		);
+		_inv = GameObject.Components.Get<InventoryComponent>( FindMode.InSelf | FindMode.InChildren );
+		_uiCtx = GameObject.Components.Get<PlayerUiContext>( FindMode.InSelf | FindMode.InChildren );
 	}
 
 	protected override void OnUpdate()
@@ -23,11 +24,16 @@ public sealed class InventoryInput : Component
 		if ( IsProxy ) return;
 		if ( UiModalController.IsUiLockedLocal ) return;
 
+		if ( _uiCtx == null )
+			_uiCtx = GameObject.Components.Get<PlayerUiContext>( FindMode.InSelf | FindMode.InChildren );
+
+		// Hotbar désactivée par les rules
+		if ( _uiCtx != null && !_uiCtx.invhud )
+			return;
+
 		if ( _inv == null )
 		{
-			_inv = GameObject.Components.Get<InventoryComponent>(
-				FindMode.InSelf | FindMode.InChildren
-			);
+			_inv = GameObject.Components.Get<InventoryComponent>( FindMode.InSelf | FindMode.InChildren );
 			if ( _inv == null ) return;
 		}
 
