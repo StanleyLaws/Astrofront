@@ -18,6 +18,9 @@ public sealed class GameNetworkManagerAF : Component, Component.INetworkListener
 
     public void OnActive( Connection connection )
     {
+		CoreBootstrap.EnsureInitialized();
+		
+		
         if ( PlayerPrefab == null )
         {
             Log.Error("[GameNetworkManager] PlayerPrefab n'est pas assigné.");
@@ -55,7 +58,7 @@ public sealed class GameNetworkManagerAF : Component, Component.INetworkListener
         var player = PlayerPrefab.Clone( tr );
         player.NetworkSpawn( connection );
 		Astrofront_Rules.ApplyHost( player );
-		Astrofront_SboxController_Rules.ApplyLocal( player );
+		Astrofront_Controller_Rules.ApplyLocal( player );
 
         Log.Info($"[GameNetworkManager] Spawned player for {connection.DisplayName}");
     }

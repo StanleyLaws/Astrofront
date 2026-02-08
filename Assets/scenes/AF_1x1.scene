@@ -58,7 +58,7 @@
         {
           "__type": "Astrofront.MatchManager",
           "__guid": "11500bfd-cb5b-4403-b4a2-fcaaacd73caf",
-          "__enabled": true,
+          "__enabled": false,
           "Flags": 0,
           "BlueSpawns": [
             {
@@ -94,7 +94,7 @@
           "OnComponentUpdate": null,
           "PlayerPrefab": {
             "_type": "gameobject",
-            "prefab": "prefabs/core/player_core.prefab"
+            "prefab": "prefabs/core/playerdefault.prefab"
           },
           "SpawnPoints": [
             {
@@ -555,7 +555,7 @@
           "OnTriggerEnter": null,
           "OnTriggerExit": null,
           "RollingResistance": null,
-          "Scale": "97.93002,100,74.64598",
+          "Scale": "97.93002,51.05001,74.64598",
           "Static": false,
           "Surface": null,
           "SurfaceVelocity": "0,0,0"

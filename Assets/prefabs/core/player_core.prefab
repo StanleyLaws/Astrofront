@@ -167,6 +167,26 @@
         "Speed": 1
       },
       {
+        "__type": "Sandbox.Dresser",
+        "__guid": "72053db1-e676-41cd-8526-86fc69fed017",
+        "__enabled": true,
+        "Flags": 0,
+        "ApplyHeightScale": true,
+        "BodyTarget": null,
+        "Clothing": [],
+        "ManualAge": 0.5,
+        "ManualHeight": 0.5,
+        "ManualTint": 0.5,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "Source": "OwnerConnection",
+        "WorkshopItems": []
+      },
+      {
         "__type": "Astrofront.SboxMovementModeController",
         "__guid": "c63ea855-23cb-4265-9c88-dab10e1a8ad9",
         "__enabled": true,
@@ -196,24 +216,6 @@
           "component_id": "2e22e014-b379-4b0a-8a36-3b53bd888bd6",
           "go": "5d04828b-22fc-47fb-bbbf-bcfadc129b44",
           "component_type": "PlayerController"
-        },
-        "OnComponentDestroy": null,
-        "OnComponentDisabled": null,
-        "OnComponentEnabled": null,
-        "OnComponentFixedUpdate": null,
-        "OnComponentStart": null,
-        "OnComponentUpdate": null
-      },
-      {
-        "__type": "Astrofront.PlayerAppearance",
-        "__guid": "236d7346-3e42-4acd-a6c8-a078acbcb89a",
-        "__enabled": true,
-        "Flags": 0,
-        "Body": {
-          "_type": "component",
-          "component_id": "484714ee-889c-479f-8980-d346aea3e116",
-          "go": "3275f65f-0ab5-4f21-b08c-4e4eca1ed7de",
-          "component_type": "SkinnedModelRenderer"
         },
         "OnComponentDestroy": null,
         "OnComponentDisabled": null,
@@ -326,6 +328,24 @@
         "OnComponentFixedUpdate": null,
         "OnComponentStart": null,
         "OnComponentUpdate": null
+      },
+      {
+        "__type": "Astrofront.CoreFirstPersonViewmodel",
+        "__guid": "d156c66f-3933-48cf-8ef9-e5a03e92d447",
+        "__enabled": true,
+        "Flags": 0,
+        "ArmsModelPath": "models/first_person/v_first_person_arms_human.vmdl_c",
+        "ForceSmallZNearInFps": true,
+        "ForceViewModelLayer": true,
+        "FpsZNear": 1.5,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "ViewModelLocalAnglesOffset": "0,0,0",
+        "ViewModelLocalOffset": "12,4,-10"
       }
     ],
     "Children": [

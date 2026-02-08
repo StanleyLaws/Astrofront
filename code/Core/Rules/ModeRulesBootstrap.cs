@@ -9,6 +9,9 @@ namespace Astrofront;
 /// Il applique automatiquement les rules :
 /// - Côté HOST : ApplyHost(player) une seule fois par player spawné
 /// - Côté CLIENT local (owner) : ApplyLocal(player) une seule fois sur le local player
+///
+/// ✅ En plus, il centralise l'initialisation des "registries" (motors, etc.)
+/// pour éviter une explosion de bootstraps.
 /// </summary>
 public sealed class ModeRulesBootstrap : Component
 {
@@ -24,10 +27,47 @@ public sealed class ModeRulesBootstrap : Component
 	private readonly HashSet<System.Guid> _hostApplied = new();
 	private bool _localApplied;
 
+	// ✅ Init registries une seule fois par scène
+	private bool _registriesInitialized;
+
+	protected override void OnStart()
+	{
+		EnsureRegistries();
+	}
+
 	protected override void OnUpdate()
 	{
+		// Safe: si ce component est ajouté tard ou si la scène a un timing chelou
+		EnsureRegistries();
+
 		ApplyHostRulesIfNeeded();
 		ApplyLocalRulesIfNeeded();
+	}
+
+	private void EnsureRegistries()
+	{
+		if ( _registriesInitialized )
+			return;
+
+		_registriesInitialized = true;
+
+		// 1) Core (walk/fly, etc.)
+		CoreBootstrap.EnsureInitialized();
+
+		// 2) Mode-specific
+		switch ( Mode )
+		{
+			case ModeId.Lobby:
+				// Lobby: si tu veux des motors spécifiques lobby plus tard, tu les mets ici.
+				Log.Info( "[ModeRulesBootstrap] Mode=LObby registries initialized." );
+				break;
+
+			case ModeId.Astrofront:
+				// Astrofront: register des motors spécifiques au mode
+				MovementMotorRegistry.Register( "astrofront_fly", () => new FlyMotor() );
+				Log.Info( "[ModeRulesBootstrap] Mode=Astrofront registries initialized: astrofront_fly" );
+				break;
+		}
 	}
 
 	private void ApplyHostRulesIfNeeded()
@@ -80,7 +120,7 @@ public sealed class ModeRulesBootstrap : Component
 				break;
 
 			case ModeId.Astrofront:
-				Astrofront_SboxController_Rules.ApplyLocal( localPlayer );
+				Astrofront_Controller_Rules.ApplyLocal( localPlayer );
 				break;
 		}
 	}

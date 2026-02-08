@@ -2,132 +2,220 @@ using Sandbox;
 
 namespace Astrofront;
 
-/// Caméra TPS "arc arrière" avec :
-/// - inversion des axes souris (bas->monte, droite->droite),
-/// - pas de molette (distance fixe),
-/// - orbite confinée derrière le joueur,
-/// - si on pousse au-delà de l'arc : on ROTATE le joueur en direct pour suivre.
+/// Caméra unique scalable (ThirdPerson + FirstPerson) :
+/// - ThirdPerson : arc arrière + anti-clipping (trace vers la caméra)
+/// - FirstPerson : ancrage tête/yeux (anchor) + rotation libre
+/// - Optionnel : toggle via Input action string (sans dépendre d'une enum InputActions)
 public sealed class MyCustomControllerCamera : Component
 {
-    [Property] public GameObject Target { get; set; }           // joueur racine
-    [Property] public float Distance { get; set; } = 180f;      // distance caméra (fixe)
-    [Property] public float HeightOffset { get; set; } = 20f;   // hauteur au-dessus du joueur
+	// --------------------
+	// Mode
+	// --------------------
+	public enum CameraMode
+	{
+		ThirdPerson = 0,
+		FirstPerson = 1
+	}
 
-    [Property] public float MinPitch { get; set; } = -10f;      // bornes verticales (°)
-    [Property] public float MaxPitch { get; set; } = 45f;
+	[Property, Group( "Mode" )] public CameraMode Mode { get; set; } = CameraMode.ThirdPerson;
 
-    [Property] public float MouseSensitivity { get; set; } = 0.15f;
+	/// Si true, on peut toggle le mode via un input action name (string).
+	/// Exemple: "view" / "camera" / "duck" etc selon tes bindings.
+	[Property, Group( "Mode" )] public bool AllowToggle { get; set; } = false;
+	[Property, Group( "Mode" )] public string ToggleAction { get; set; } = "view";
 
-    /// Ouverture latérale (demi-arc) derrière le joueur, en degrés.
-    [Property] public float RearArcHalfAngle { get; set; } = 45f;
+	// --------------------
+	// Refs
+	// --------------------
+	[Property, Group( "Refs" )] public GameObject Target { get; set; }              // joueur racine
+	[Property, Group( "Refs" )] public GameObject FirstPersonAnchor { get; set; }  // tête/yeux (optionnel)
 
-    /// Si vrai, quand la souris “tire” au-delà de l’arc arrière,
-    /// on pivote le joueur pour suivre le mouvement tout en gardant la caméra dans l’arc.
-    [Property] public bool RotateTargetWhenArcExceeded { get; set; } = true;
+	// --------------------
+	// Common tuning
+	// --------------------
+	[Property, Group( "Common" )] public float MouseSensitivity { get; set; } = 0.15f;
+	[Property, Group( "Common" )] public float MinPitch { get; set; } = -10f;
+	[Property, Group( "Common" )] public float MaxPitch { get; set; } = 45f;
+	[Property, Group( "Common" )] public float PosLerp { get; set; } = 12f;
+	[Property, Group( "Common" )] public float RotLerp { get; set; } = 16f;
 
-    [Property] public float PosLerp { get; set; } = 12f;        // smoothing position
-    [Property] public float RotLerp { get; set; } = 16f;        // smoothing rotation
+	// --------------------
+	// Third Person
+	// --------------------
+	[Property, Group( "ThirdPerson" )] public float Distance { get; set; } = 180f;           // distance caméra
+	[Property, Group( "ThirdPerson" )] public float HeightOffset { get; set; } = 20f;        // focus au-dessus du joueur
+	[Property, Group( "ThirdPerson" )] public float RearArcHalfAngle { get; set; } = 45f;    // demi-arc derrière le joueur (°)
+	[Property, Group( "ThirdPerson" )] public bool RotateTargetWhenArcExceeded { get; set; } = true;
 
-    private float _yawDeg;    // en degrés (monde)
-    private float _pitchDeg;  // en degrés
-    private Vector3 _goalPos;
-    private Rotation _goalRot;
+	/// Anti-clipping en TP : rayon de trace pour éviter de traverser les murs.
+	[Property, Group( "ThirdPerson" )] public float CameraTraceRadius { get; set; } = 4f;
+	[Property, Group( "ThirdPerson" )] public float CameraTracePadding { get; set; } = 2f; // décale un peu du mur
 
-    private CameraComponent _cam;
+	// --------------------
+	// First Person
+	// --------------------
+	/// Offset local appliqué depuis l'anchor FP (ex: léger recul/hauteur).
+	[Property, Group( "FirstPerson" )] public Vector3 FirstPersonLocalOffset { get; set; } = Vector3.Zero;
 
-    protected override void OnStart()
-    {
-        _cam = Components.Get<CameraComponent>( FindMode.EverythingInSelfAndDescendants );
-        if ( _cam == null ) return;
+	// --------------------
+	// Internal state
+	// --------------------
+	private float _yawDeg;    // monde (yaw)
+	private float _pitchDeg;  // pitch
+	private Vector3 _goalPos;
+	private Rotation _goalRot;
 
-        if ( Target is null ) return;
+	private CameraComponent _cam;
 
-        // On démarre au MILIEU de l’arc arrière du joueur :
-        float frontYaw = GetYawDeg( Target.WorldRotation.Forward );
-        _yawDeg   = frontYaw; // (la position sera "derrière" via -rot.Forward * Distance)
-        _pitchDeg = ((MinPitch + MaxPitch) * 0.5f).Clamp( MinPitch, MaxPitch );
-    }
+	protected override void OnStart()
+	{
+		_cam = Components.Get<CameraComponent>( FindMode.EverythingInSelfAndDescendants );
+		if ( _cam == null ) return;
+		if ( Target is null ) return;
 
-    protected override void OnUpdate()
-    {
-        if ( IsProxy ) return;
+		// Init : yaw aligné avec le forward du joueur, pitch au milieu des bornes
+		float frontYaw = GetYawDeg( Target.WorldRotation.Forward );
+		_yawDeg = frontYaw;
+		_pitchDeg = ((MinPitch + MaxPitch) * 0.5f).Clamp( MinPitch, MaxPitch );
+	}
 
-        // Ancien: InputGate.CanGameplayInput
-        if ( UiModalController.IsUiLockedLocal ) return;
+	protected override void OnUpdate()
+	{
+		if ( IsProxy ) return;
+		if ( _cam == null || !_cam.Enabled ) return;
+		if ( Target is null ) return;
 
-        if ( _cam == null || !_cam.Enabled ) return;
-        if ( Target is null ) return;
+		// Bloque input caméra quand UI modale
+		if ( UiModalController.IsUiLockedLocal ) return;
 
-        // 1) Lire la souris - INVERSION demandée :
-        //    - souris vers le bas => cam MONTE  (pitch++)
-        //    - souris vers la droite => cam va à DROITE du perso (yaw--)
-        var md = Input.MouseDelta;
-        _yawDeg   -= md.x * MouseSensitivity;   // inversé
-        _pitchDeg += md.y * MouseSensitivity;   // inversé
-        _pitchDeg  = _pitchDeg.Clamp( MinPitch, MaxPitch );
+		// Toggle optionnel (string) pour ne pas dépendre d'une classe InputActions
+		if ( AllowToggle && !string.IsNullOrWhiteSpace( ToggleAction ) && Input.Pressed( ToggleAction ) )
+		{
+			Mode = (Mode == CameraMode.ThirdPerson) ? CameraMode.FirstPerson : CameraMode.ThirdPerson;
 
-        // 2) Confinement à l’arc arrière + rotation du joueur si nécessaire
-        float frontYaw = GetYawDeg( Target.WorldRotation.Forward );
+			// Optionnel : ré-ancrer le yaw à la rotation actuelle de la cam pour éviter un "snap"
+			_yawDeg = GetYawDeg( WorldRotation.Forward );
+		}
 
-        // Angle relatif demandé par la souris par rapport au "front" du joueur
-        float relDesired = ShortestAngleDeg( _yawDeg, frontYaw ); // [-180,180]
+		// 1) Lire la souris - INVERSION demandée :
+		//    - souris vers le bas => cam MONTE  (pitch++)
+		//    - souris vers la droite => cam va à DROITE du perso (yaw--)
+		var md = Input.MouseDelta;
+		_yawDeg -= md.x * MouseSensitivity;
+		_pitchDeg += md.y * MouseSensitivity;
+		_pitchDeg = _pitchDeg.Clamp( MinPitch, MaxPitch );
 
-        // Clamp dans l'arc
-        float clamped = relDesired.Clamp( -RearArcHalfAngle, +RearArcHalfAngle );
+		// 2) Construire la rotation voulue (commune)
+		_goalRot = Rotation.From( new Angles( _pitchDeg, _yawDeg, 0f ) );
 
-        if ( RotateTargetWhenArcExceeded && !relDesired.AlmostEqual( clamped, 0.0001f ) )
-        {
-            // On a "poussé" au-delà de l'arc : l'excès devient une rotation du joueur.
-            float overflow = relDesired - clamped; // signe = sens de la poussée
-            float newFront = NormalizeDeg( frontYaw + overflow );
+		// 3) Calculer position selon mode
+		if ( Mode == CameraMode.FirstPerson )
+			UpdateFirstPerson();
+		else
+			UpdateThirdPerson();
 
-            // On applique le nouveau yaw au joueur (Z-up, pas de pitch/roll).
-            var targetAngles = Target.WorldRotation.Angles();
-            targetAngles = new Angles( 0f, newFront, 0f );
-            Target.WorldRotation = Rotation.From( targetAngles );
+		// 4) Smoothing
+		WorldRotation = Rotation.Lerp( WorldRotation, _goalRot, RotLerp * Time.Delta );
+		WorldPosition = Vector3.Lerp( WorldPosition, _goalPos, PosLerp * Time.Delta );
+	}
 
-            // La caméra reste dans l'arc autour du NOUVEAU front :
-            frontYaw = newFront;
-        }
+	private void UpdateFirstPerson()
+	{
+		// Anchor : si non assigné -> fallback sur Target
+		var anchor = FirstPersonAnchor ?? Target;
 
-        // Le yaw caméra final reste confiné à l’arc
-        _yawDeg = NormalizeDeg( frontYaw + clamped );
+		// Pose de base = anchor
+		var basePos = anchor.WorldPosition;
+		var baseRot = anchor.WorldRotation;
 
-        // 3) Construire la rotation de la caméra
-        var rot = Rotation.From( new Angles( _pitchDeg, _yawDeg, 0f ) );
-        _goalRot = rot;
+		// On veut une rotation caméra pilotée par souris.
+		// L'anchor sert surtout de point de position (et éventuellement pour un futur "headbob"/animation).
+		// Offset FP en espace local de la caméra (pratique pour reculer/monter)
+		var offsetWorld = _goalRot * FirstPersonLocalOffset;
 
-        // 4) Position : derrière la cible, à Distance, regardant vers la cible
-        var focus = Target.WorldPosition + Vector3.Up * HeightOffset;
-        var desiredPos = focus - rot.Forward * Distance;
-        _goalPos = desiredPos;
+		_goalPos = basePos + offsetWorld;
 
-        // 5) Lerp doux
-        WorldRotation = Rotation.Lerp( WorldRotation, _goalRot, RotLerp * Time.Delta );
-        WorldPosition = Vector3.Lerp( WorldPosition, _goalPos, PosLerp * Time.Delta );
-    }
+		// En FP : pas d'arc clamp, pas de rotate target automatique ici
+		// (si tu veux tourner le perso en FP, ce sera une responsabilité du controller, pas de la caméra)
+	}
 
-    // --------- Utils angles (degrés) ---------
+	private void UpdateThirdPerson()
+	{
+		// Confinement arc arrière + rotation target si dépassement
+		float frontYaw = GetYawDeg( Target.WorldRotation.Forward );
 
-    private static float NormalizeDeg( float a )
-    {
-        a %= 360f;
-        if ( a < 0f ) a += 360f;
-        return a;
-    }
+		float relDesired = ShortestAngleDeg( _yawDeg, frontYaw ); // [-180,180]
+		float clamped = relDesired.Clamp( -RearArcHalfAngle, +RearArcHalfAngle );
 
-    private static float ShortestAngleDeg( float a, float b )
-    {
-        float diff = NormalizeDeg( a ) - NormalizeDeg( b );
-        if ( diff > 180f ) diff -= 360f;
-        if ( diff < -180f ) diff += 360f;
-        return diff;
-    }
+		if ( RotateTargetWhenArcExceeded && !relDesired.AlmostEqual( clamped, 0.0001f ) )
+		{
+			float overflow = relDesired - clamped;
+			float newFront = NormalizeDeg( frontYaw + overflow );
 
-    private static float GetYawDeg( Vector3 forward )
-    {
-        var f2 = forward.WithZ(0).Normal;
-        if ( f2.IsNearlyZero() ) return 0f;
-        return System.MathF.Atan2( f2.y, f2.x ) * 180f / System.MathF.PI;
-    }
+			var targetAngles = Target.WorldRotation.Angles();
+			targetAngles = new Angles( 0f, newFront, 0f );
+			Target.WorldRotation = Rotation.From( targetAngles );
+
+			frontYaw = newFront;
+		}
+
+		// Yaw final confiné à l'arc
+		_yawDeg = NormalizeDeg( frontYaw + clamped );
+
+		// Recalcule rotation car yaw peut avoir été modifié par l'arc clamp
+		_goalRot = Rotation.From( new Angles( _pitchDeg, _yawDeg, 0f ) );
+
+		// Focus au-dessus du joueur
+		var focus = Target.WorldPosition + Vector3.Up * HeightOffset;
+
+		// Position voulue (derrière)
+		var desiredPos = focus - _goalRot.Forward * Distance;
+
+		// Anti-clipping : trace focus -> desiredPos
+		_goalPos = ResolveThirdPersonCollision( focus, desiredPos );
+	}
+
+	private Vector3 ResolveThirdPersonCollision( Vector3 focus, Vector3 desiredPos )
+	{
+		// Si la trace n'a pas de sens (distance nulle)
+		if ( (desiredPos - focus).LengthSquared < 0.001f )
+			return desiredPos;
+
+		var tr = Scene.Trace
+			.Ray( focus, desiredPos )
+			.Radius( CameraTraceRadius )
+			.IgnoreGameObject( Target )
+			.IgnoreGameObject( GameObject )
+			.Run();
+
+		if ( !tr.Hit )
+			return desiredPos;
+
+		// Se placer juste avant le mur
+		return tr.EndPosition + tr.Normal * CameraTracePadding;
+	}
+
+	// --------- Utils angles (degrés) ---------
+
+	private static float NormalizeDeg( float a )
+	{
+		a %= 360f;
+		if ( a < 0f ) a += 360f;
+		return a;
+	}
+
+	private static float ShortestAngleDeg( float a, float b )
+	{
+		float diff = NormalizeDeg( a ) - NormalizeDeg( b );
+		if ( diff > 180f ) diff -= 360f;
+		if ( diff < -180f ) diff += 360f;
+		return diff;
+	}
+
+	private static float GetYawDeg( Vector3 forward )
+	{
+		var f2 = forward.WithZ( 0 ).Normal;
+		if ( f2.IsNearlyZero() ) return 0f;
+		return System.MathF.Atan2( f2.y, f2.x ) * 180f / System.MathF.PI;
+	}
 }
