@@ -33,7 +33,7 @@ public sealed class GameNetworkManagerLobby : Component, Component.INetworkListe
         var player = PlayerPrefab.Clone( tr );
         player.NetworkSpawn( connection );
 		Lobby_Rules.ApplyHost( player );
-		Lobby_SboxController_Rules.ApplyLocal( player );
+		Lobby_Controller_Rules.ApplyLocal( player );
 
 
         Log.Info($"[GameNetworkManager] Spawned player for {connection.DisplayName}");

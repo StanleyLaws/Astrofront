@@ -12,35 +12,6 @@ namespace Astrofront;
 ///
 /// Turn-in-place:
 /// - Alimente move_rotationspeed (deg/sec) à partir du yaw du Body.
-/*
- FUTURE IMPROVEMENT — Animation Snapshot Networking
- --------------------------------------------------
- Actuellement :
- - Le joueur local calcule toute son animation (wish_*, aim_*, duck, move_rotationspeed).
- - Les autres joueurs voient l’animation principalement via la vélocité réseau + aimDir sync.
-
- C’est suffisant pour :
- ✔ serveurs listen
- ✔ serveurs dédiés
- ✔ gameplay standard
-
- À envisager plus tard (FPS compétitif / animations très précises en réseau) :
- Mettre en place un "Animation Snapshot" envoyé Owner → Host → Clients contenant :
-   - wishVelocity (Vector2)
-   - duckAmount (float)
-   - grounded (bool)
-   - yawRotationSpeed (float)
-   - aimDirection (Vector3)
-
- Objectif :
- - Éviter que les proxies déduisent uniquement l’anim depuis la physique
- - Améliorer la fidélité des strafes, starts/stops, et transitions rapides
-
- Important :
- Ce snapshot ne remplace PAS la physique réseau, il ne sert qu’à l’animation visuelle.
-*/
-
-
 public sealed class CitizenAnimDriver : Component
 {
 	[Property, Group("Refs")] public MyCustomController Controller { get; set; }
@@ -89,27 +60,42 @@ public sealed class CitizenAnimDriver : Component
 		ResolveRefs();
 		if ( Body == null ) return;
 
-		// Robust: protect against other components resetting the renderer/animgraph.
 		ForceApplyGraph();
 
 		if ( !Body.UseAnimGraph || Body.AnimationGraph == null )
 			return;
 
+		// Owner local = calcule wish_* depuis MovementInput + envoie aim via RPC
 		bool isLocalOwner = (Controller?.Network?.Owner != null && Controller.Network.Owner == Connection.Local);
 
-		// --- Turn-in-place: move_rotationspeed (deg/sec) ---
-		// On calcule la vitesse de yaw du body indépendamment du mouvement.
-		// Le graph s'en sert pour l'anim "pivot sur place".
+		// --------------------------------------------------------
+		// Anim Hints (depuis le motor actif via MyCustomController)
+		// --------------------------------------------------------
+		var hints = Controller != null ? Controller.LastAnimHints : MovementMotorAnimHints.Default;
+
+		Body.Set( "move_style", hints.MoveStyle );
+		Body.Set( "special_movement_states", hints.SpecialMovementStates );
+		Body.Set( "holdtype", hints.HoldType );
+
+		if ( hints.ForceFirstPersonFlag )
+			Body.Set( "b_firstperson", hints.FirstPersonFlag );
+
+		float animMul = (hints.AnimSpeedMultiplier <= 0f) ? 1f : hints.AnimSpeedMultiplier;
+
+		// --------------------------------------------------------
+		// Turn-in-place: move_rotationspeed (deg/sec)
+		// --------------------------------------------------------
 		float yawDeg = GetYawDeg( GameObject.WorldRotation );
 		float deltaYaw = Angles.NormalizeAngle( yawDeg - _lastYawDeg );
 		_lastYawDeg = yawDeg;
 
 		float rawYawSpeed = (Time.Delta > 0f) ? (deltaYaw / Time.Delta) : 0f;
 		rawYawSpeed = rawYawSpeed.Clamp( -TurnSpeedClamp, TurnSpeedClamp );
-
 		_smoothedYawSpeed = _smoothedYawSpeed.LerpTo( rawYawSpeed, TurnSpeedSmooth * Time.Delta );
 
-		// --- Duck ---
+		// --------------------------------------------------------
+		// Duck
+		// --------------------------------------------------------
 		float duckVal = (Controller != null) ? Controller.DuckAmount : 0f;
 		bool justExitedDuck = false;
 
@@ -125,29 +111,35 @@ public sealed class CitizenAnimDriver : Component
 		if ( Controller != null )
 			duckSpeedMul = MathX.Lerp( 1f, Controller.DuckSpeedMultiplier, duckVal );
 
-		// --- Intentions (wish_*) ---
+		// --------------------------------------------------------
+		// Intentions (wish_*) : uniquement côté owner
+		// IMPORTANT: utiliser MovementInput (pas Input.* direct)
+		// --------------------------------------------------------
 		float wish_x = 0f, wish_y = 0f, wish_speed = 0f, wish_direction = 0f;
 		bool hasMoveInput = false;
 
 		if ( isLocalOwner && !UiModalController.IsUiLockedLocal )
 		{
-			var mv = Input.AnalogMove;
-			float moveForward = mv.x;
-			float moveRight = -mv.y;
+			var move2 = Controller?.MovementInput?.MoveAxis ?? Vector2.Zero; // x=right, y=forward
 
-			var wish2 = new Vector2( moveRight, moveForward );
-			float mag = wish2.Length.Clamp( 0f, 1f );
-
-			wish_x = ( moveForward * WalkRunBlendSpeed ) * duckSpeedMul;
-			wish_y = ( moveRight   * WalkRunBlendSpeed ) * duckSpeedMul;
-			wish_speed = mag * WalkRunBlendSpeed * duckSpeedMul;
+			float mag = move2.Length.Clamp( 0f, 1f );
 			hasMoveInput = mag > 0.01f;
+
+			// citizen.vanmgrph : wish_x=forward, wish_y=right
+			// On garde le même "scale" qu'avant, mais sans inversions incohérentes.
+			float mul = duckSpeedMul * animMul;
+
+			wish_x = ( move2.y * WalkRunBlendSpeed ) * mul;
+			wish_y = ( move2.x * WalkRunBlendSpeed ) * mul;
+			wish_speed = mag * WalkRunBlendSpeed * mul;
 
 			if ( mag > 0.001f )
 				wish_direction = MathF.Atan2( wish_y, wish_x ) * 180f / MathF.PI;
 		}
 
-		// --- Mouvement réel (move_*) ---
+		// --------------------------------------------------------
+		// Mouvement réel (move_*) : basé sur vitesse physique (pas *animMul*)
+		// --------------------------------------------------------
 		var pos = Controller != null ? Controller.WorldPosition : WorldPosition;
 		var velFromPos = (pos - _lastPos) / Time.Delta;
 		_lastPos = pos;
@@ -166,20 +158,21 @@ public sealed class CitizenAnimDriver : Component
 		float move_spd = MathF.Sqrt( fwdSpd * fwdSpd + sideSpd * sideSpd );
 		float move_direction = (move_spd > 0.01f) ? MathF.Atan2( move_y, move_x ) * 180f / MathF.PI : 0f;
 
-		// UI lock: idle propre côté owner
 		if ( isLocalOwner && UiModalController.IsUiLockedLocal )
 		{
 			wish_x = wish_y = wish_speed = 0f;
 			hasMoveInput = false;
 			move_x = move_y = move_spd = 0f;
-
-			// On peut garder le turn-in-place même en UI lock si tu veux.
-			// Là on le garde (ça évite de figer en tournant la caméra).
 		}
 
+		// Grounded : probe par défaut, override possible (fly/zeroG)
 		bool grounded = ProbeGround( pos, Controller != null ? Controller.Radius : 16f );
+		if ( hints.OverrideGrounded )
+			grounded = hints.Grounded;
 
-		// --- Apply params ---
+		// --------------------------------------------------------
+		// Apply params au graph
+		// --------------------------------------------------------
 		Body.Set( "duck", duckVal );
 		Body.Set( "b_ducking", duckVal > 0.5f );
 
@@ -222,14 +215,16 @@ public sealed class CitizenAnimDriver : Component
 		Body.Set( "move_groundspeed", move_spd );
 		Body.Set( "move_direction", move_direction );
 
-		// ✅ Turn-in-place input
 		Body.Set( "move_rotationspeed", _smoothedYawSpeed );
 
-		Body.Set( "moving", (move_spd > 1.0f) || (justExitedDuck && hasMoveInput) );
+		bool moving = (move_spd > 1.0f) || (justExitedDuck && hasMoveInput);
+		if ( hints.OverrideMoving )
+			moving = hints.Moving;
+
+		Body.Set( "moving", moving );
 		Body.Set( "b_grounded", grounded );
 		Body.Set( "b_grouned", grounded );
 
-		// Re-apply again at end of frame (extra safety vs external resets).
 		ForceApplyGraph();
 	}
 
@@ -258,7 +253,6 @@ public sealed class CitizenAnimDriver : Component
 
 	private static float GetYawDeg( Rotation rot )
 	{
-		// On force yaw sur le plan XY (Z-up).
 		var f = rot.Forward.WithZ( 0f );
 		if ( f.IsNearlyZero() ) return 0f;
 		f = f.Normal;

@@ -25,12 +25,34 @@ public sealed class WalkMotor : IMovementMotor
 	{
 	}
 
+	/// Hints d'anim pour locomotion standard au sol.
+	public void GetAnimHints( ref MovementMotorAnimHints hints )
+	{
+		// Style "ground locomotion" par défaut
+		hints.MoveStyle = 0;
+		hints.SpecialMovementStates = 0;
+		hints.HoldType = 0;
+
+		// On laisse grounded/moving en fallback (calculés via CC + vitesse dans l'AnimDriver),
+		// mais on peut déjà donner un multiplier neutre.
+		hints.AnimSpeedMultiplier = 1f;
+	}
+
 	public void Step( MovementMotorContext ctx )
 	{
 		var cc = ctx.Controller;
 		if ( cc == null ) return;
 
 		float dt = ctx.DeltaTime;
+
+		// -----------------------
+		// Hints anim (optionnel)
+		// -----------------------
+		// Chaque motor peut remplir ctx.AnimHints ; le CitizenAnimDriver peut les lire.
+		// Ici on met juste les infos de style.
+		var hints = MovementMotorAnimHints.Default;
+		GetAnimHints( ref hints );
+		ctx.AnimHints = hints;
 
 		// -----------------------
 		// Jump buffer + coyote
@@ -64,7 +86,7 @@ public sealed class WalkMotor : IMovementMotor
 		if ( cc.IsOnGround )
 			cc.ApplyFriction( ctx.Friction, ctx.StopSpeed );
 
-		// ----------------------- 
+		// -----------------------
 		// Accélération horizontale
 		// -----------------------
 		Vector3 wishDir = Vector3.Zero;

@@ -4,7 +4,7 @@ namespace Astrofront;
 
 /// Lit les inputs de mouvement (clavier + analog) et applique les règles globales:
 /// - si UI modale ouverte -> aucun input gameplay
-/// - Jump : expose un "pressed this frame" (edge) utilisable pour buffer/coyote dans le controller
+/// - Jump : expose un "pressed this frame" (edge) + un "held" + un latch safe (Update->Fixed)
 ///
 /// Ce composant ne fait PAS de physique. Il ne fait PAS de règles de gameplay.
 /// Il ne fait que lire et normaliser les inputs.
@@ -24,8 +24,14 @@ public sealed class PlayerMovementInput : Component
 	/// Vecteur 2D normalisé dans l’espace input (Right, Forward), longueur <= 1
 	public Vector2 MoveAxis { get; private set; }
 
-	/// Jump press "edge" (1 frame)
+	/// Jump press "edge" (1 frame) - utile pour UI / logs / debug
 	public bool JumpPressedThisFrame { get; private set; }
+
+	/// Jump maintenu (hold)
+	public bool JumpHeld { get; private set; }
+
+	/// Jump press latch (Update->Fixed) : ne rate pas un press si Fixed tombe "entre".
+	public bool JumpPressedLatched { get; private set; }
 
 	/// Duck maintenu
 	public bool DuckHeld { get; private set; }
@@ -53,6 +59,7 @@ public sealed class PlayerMovementInput : Component
 
 		if ( !CanGameplayInput )
 		{
+			// Important: on stoppe aussi le latch pendant le lock UI
 			Clear();
 			return;
 		}
@@ -81,11 +88,23 @@ public sealed class PlayerMovementInput : Component
 
 		// --- Buttons ---
 		JumpPressedThisFrame = Input.Pressed( InputActions.Jump );
-		DuckHeld             = Input.Down( InputActions.Duck );
+		JumpHeld             = Input.Down( InputActions.Jump );
+
+		// Latch : si press edge arrive, on le garde jusqu'à consommation en Fixed.
+		if ( JumpPressedThisFrame )
+			JumpPressedLatched = true;
+
+		DuckHeld = Input.Down( InputActions.Duck );
 
 		// Actions optionnelles basées sur string (ne crash pas si non mappées)
 		SprintHeld   = !string.IsNullOrEmpty( SprintAction )   && Input.Down( SprintAction );
 		SlowWalkHeld = !string.IsNullOrEmpty( SlowWalkAction ) && Input.Down( SlowWalkAction );
+	}
+
+	/// À appeler depuis le controller (FixedUpdate) après avoir consommé JumpPressedLatched.
+	public void ConsumeJumpPressedLatch()
+	{
+		JumpPressedLatched = false;
 	}
 
 	private static float PickDominant( float digital, float analog )
@@ -101,6 +120,9 @@ public sealed class PlayerMovementInput : Component
 		MoveAxis = Vector2.Zero;
 
 		JumpPressedThisFrame = false;
+		JumpHeld = false;
+		JumpPressedLatched = false;
+
 		DuckHeld = false;
 		SprintHeld = false;
 		SlowWalkHeld = false;

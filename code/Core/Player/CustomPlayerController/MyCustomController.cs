@@ -14,6 +14,27 @@ public sealed class MyCustomController : Component
 	// ✅ Motor par défaut (configurable par Rules/Prefab)
 	[Property, Group("Motor")] public string DefaultMotorId { get; set; } = "walk";
 
+	// ✅ Derniers hints anim produits (Motor + Policy)
+	public MovementMotorAnimHints LastAnimHints { get; private set; } = MovementMotorAnimHints.Default;
+
+	// =========================================================
+	// ✅ Animation Policy (configurable par mode via Rules)
+	// =========================================================
+	[Property, Group("AnimPolicy")] public bool UseAnimationPolicy { get; set; } = true;
+	[Property, Group("AnimPolicy")] public float PolicyAnimSpeedMultiplier { get; set; } = 1f;
+	[Property, Group("AnimPolicy")] public int PolicyMoveStyleOverride { get; set; } = -1;
+	[Property, Group("AnimPolicy")] public int PolicySpecialStatesOverride { get; set; } = -1;
+	[Property, Group("AnimPolicy")] public int PolicyHoldTypeOverride { get; set; } = -1;
+	[Property, Group("AnimPolicy")] public int PolicyForceFirstPerson { get; set; } = -1;
+	[Property, Group("AnimPolicy")] public int PolicyForceGrounded { get; set; } = -1;
+	[Property, Group("AnimPolicy")] public int PolicyForceMoving { get; set; } = -1;
+
+	public void SetAnimSpeedMultiplier( float mul ) => PolicyAnimSpeedMultiplier = mul;
+	public void ClearMoveStyleOverride() => PolicyMoveStyleOverride = -1;
+	public void SetMoveStyleOverride( int style ) => PolicyMoveStyleOverride = style;
+	public void ClearHoldTypeOverride() => PolicyHoldTypeOverride = -1;
+	public void SetHoldTypeOverride( int holdType ) => PolicyHoldTypeOverride = holdType;
+
 	// --------------------
 	// Orientation policy
 	// --------------------
@@ -58,9 +79,6 @@ public sealed class MyCustomController : Component
 
 	private float _duck;
 
-	// Jump latch (Update -> FixedUpdate)
-	private bool _jumpLatched;
-
 	public bool IsGrounded => CharacterController?.IsOnGround ?? false;
 	public Vector3 Velocity => CharacterController?.Velocity ?? default;
 	public float Radius => CharacterController?.Radius ?? StandRadius;
@@ -78,44 +96,35 @@ public sealed class MyCustomController : Component
 			return;
 		}
 
-		// (re)apply capsule base
 		CharacterController.Radius = StandRadius;
 		CharacterController.Height = StandHeight;
 		CharacterController.StepHeight = StepHeight;
 		CharacterController.Acceleration = Acceleration;
 		CharacterController.UseCollisionRules = true;
 
-		// ✅ Si aucun motor n'a été choisi avant OnStart, on prend DefaultMotorId via registry
 		if ( _motor == null )
 		{
 			if ( !TrySetMotorByIdInternal( DefaultMotorId, activateNow: true ) )
 			{
-				// Fallback hard si registry pas prêt (ou id invalide)
 				_motor = new WalkMotor();
-				_motor.OnActivated( BuildContext( false ) );
+				_motor.OnActivated( BuildContext( jumpPressedLatched:false ) );
 				Log.Warning( $"[MyCustomController] DefaultMotorId '{DefaultMotorId}' not found. Fallback WalkMotor()." );
 			}
 		}
 		else
 		{
-			// Motor déjà assigné tôt → activer maintenant
-			_motor.OnActivated( BuildContext( false ) );
+			_motor.OnActivated( BuildContext( jumpPressedLatched:false ) );
 		}
+
+		RebuildAnimHints();
 	}
 
 	protected override void OnUpdate()
 	{
 		if ( IsProxy ) return;
 
+		// ✅ plus besoin du latch maison : PlayerMovementInput le gère
 		EnsureRefs();
-
-		if ( MovementInput == null ) return;
-
-		if ( MovementInput.CanGameplayInput && MovementInput.JumpPressedThisFrame )
-			_jumpLatched = true;
-
-		if ( !MovementInput.CanGameplayInput )
-			_jumpLatched = false;
 	}
 
 	protected override void OnFixedUpdate()
@@ -132,12 +141,27 @@ public sealed class MyCustomController : Component
 		ApplyCapsuleFromDuck();
 		UpdateOrientation();
 
-		bool jumpPressed = _jumpLatched && MovementInput.CanGameplayInput;
+		// ✅ Latch fiable Update->Fixed (et edge uniquement si gameplay input ok)
+		bool jumpPressed = MovementInput.CanGameplayInput && MovementInput.JumpPressedLatched;
+
 		var ctx = BuildContext( jumpPressed );
+
+		// ✅ 1) Motor hints
+		var hints = MovementMotorAnimHints.Default;
+		_motor.GetAnimHints( ref hints );
+
+		// ✅ 2) Apply mode policy overrides (si activé)
+		if ( UseAnimationPolicy )
+			ApplyAnimationPolicy( ref hints );
+
+		// ✅ 3) Source de vérité
+		LastAnimHints = hints;
+		ctx.AnimHints = hints;
 
 		_motor.Step( ctx );
 
-		_jumpLatched = false;
+		// ✅ consommer seulement après Step()
+		MovementInput.ConsumeJumpPressedLatch();
 	}
 
 	private void EnsureRefs()
@@ -146,25 +170,65 @@ public sealed class MyCustomController : Component
 		MovementInput ??= Components.Get<PlayerMovementInput>( FindMode.EverythingInSelfAndAncestors );
 	}
 
+	private void RebuildAnimHints()
+	{
+		var hints = MovementMotorAnimHints.Default;
+		_motor?.GetAnimHints( ref hints );
+
+		if ( UseAnimationPolicy )
+			ApplyAnimationPolicy( ref hints );
+
+		LastAnimHints = hints;
+	}
+
+	private void ApplyAnimationPolicy( ref MovementMotorAnimHints hints )
+	{
+		float mul = (PolicyAnimSpeedMultiplier <= 0f) ? 1f : PolicyAnimSpeedMultiplier;
+		hints.AnimSpeedMultiplier *= mul;
+
+		if ( PolicyMoveStyleOverride >= 0 )
+			hints.MoveStyle = PolicyMoveStyleOverride;
+
+		if ( PolicySpecialStatesOverride >= 0 )
+			hints.SpecialMovementStates = PolicySpecialStatesOverride;
+
+		if ( PolicyHoldTypeOverride >= 0 )
+			hints.HoldType = PolicyHoldTypeOverride;
+
+		if ( PolicyForceFirstPerson == 0 || PolicyForceFirstPerson == 1 )
+		{
+			hints.ForceFirstPersonFlag = true;
+			hints.FirstPersonFlag = (PolicyForceFirstPerson == 1);
+		}
+
+		if ( PolicyForceGrounded == 0 || PolicyForceGrounded == 1 )
+		{
+			hints.OverrideGrounded = true;
+			hints.Grounded = (PolicyForceGrounded == 1);
+		}
+
+		if ( PolicyForceMoving == 0 || PolicyForceMoving == 1 )
+		{
+			hints.OverrideMoving = true;
+			hints.Moving = (PolicyForceMoving == 1);
+		}
+	}
+
 	// =========================================================
 	// Motor API (registry-friendly)
 	// =========================================================
 
-	/// Change le motor actif à partir d'un ID enregistré dans MovementMotorRegistry.
 	public bool SetMotorById( string motorId )
 	{
 		return TrySetMotorByIdInternal( motorId, activateNow: true );
 	}
 
-	/// Retour au motor "walk" Core.
 	public void UseWalkMotor()
 	{
-		// Si registry pas prêt, fallback interne de sécurité
 		if ( !SetMotorById( "walk" ) )
 			SetMotor( new WalkMotor() );
 	}
 
-	/// API low-level : change le motor actif (safe même si appelé avant OnStart()).
 	public void SetMotor( IMovementMotor newMotor )
 	{
 		if ( newMotor == null )
@@ -172,19 +236,20 @@ public sealed class MyCustomController : Component
 
 		EnsureRefs();
 
-		// Si refs pas prêtes : on mémorise, OnStart activera.
 		if ( CharacterController == null )
 		{
 			_motor = newMotor;
 			return;
 		}
 
-		var ctx = BuildContext( false );
+		var ctx = BuildContext( jumpPressedLatched:false );
 
 		_motor?.OnDeactivated( ctx );
 
 		_motor = newMotor;
 		_motor.OnActivated( ctx );
+
+		RebuildAnimHints();
 	}
 
 	private bool TrySetMotorByIdInternal( string motorId, bool activateNow )
@@ -192,26 +257,25 @@ public sealed class MyCustomController : Component
 		if ( string.IsNullOrWhiteSpace( motorId ) )
 			return false;
 
-		// Création depuis le registry
 		if ( !MovementMotorRegistry.TryCreate( motorId, out var motor ) || motor == null )
 			return false;
 
 		EnsureRefs();
 
-		// Si on ne peut pas activer (refs pas prêtes), on stocke juste
 		if ( CharacterController == null || !activateNow )
 		{
 			_motor = motor;
 			return true;
 		}
 
-		var ctx = BuildContext( false );
+		var ctx = BuildContext( jumpPressedLatched:false );
 
 		_motor?.OnDeactivated( ctx );
 
 		_motor = motor;
 		_motor.OnActivated( ctx );
 
+		RebuildAnimHints();
 		return true;
 	}
 
@@ -290,8 +354,10 @@ public sealed class MyCustomController : Component
 	private MovementMotorContext BuildContext( bool jumpPressedLatched )
 	{
 		var moveAxis = MovementInput?.MoveAxis ?? Vector2.Zero;
-		bool duckHeld = MovementInput?.DuckHeld ?? false;
-		bool slowHeld = MovementInput?.SlowWalkHeld ?? false;
+
+		bool duckHeld   = MovementInput?.DuckHeld ?? false;
+		bool jumpHeld   = MovementInput?.JumpHeld ?? false;
+		bool slowHeld   = MovementInput?.SlowWalkHeld ?? false;
 		bool sprintHeld = MovementInput?.SprintHeld ?? false;
 
 		float baseSpeed = WalkSpeed;
@@ -305,7 +371,7 @@ public sealed class MyCustomController : Component
 
 			MoveAxis = moveAxis,
 			JumpPressed = jumpPressedLatched,
-			JumpHeld = jumpPressedLatched, // placeholder
+			JumpHeld = jumpHeld,
 			DuckHeld = duckHeld,
 
 			DesiredSpeed = baseSpeed,
@@ -321,7 +387,9 @@ public sealed class MyCustomController : Component
 			JumpBuffer = JumpBuffer,
 
 			IsGrounded = CharacterController?.IsOnGround ?? false,
-			DeltaTime = Time.Delta
+			DeltaTime = Time.Delta,
+
+			AnimHints = LastAnimHints
 		};
 	}
 }

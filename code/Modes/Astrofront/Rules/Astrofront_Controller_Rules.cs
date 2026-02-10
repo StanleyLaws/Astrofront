@@ -21,7 +21,7 @@ public static class Astrofront_Controller_Rules
 		else
 		{
 			// Si tu veux des noms d'actions standardisés
-			input.SprintAction = "Sprint";     // assure-toi que l'action existe dans Input Actions
+			input.SprintAction = "Run";     // assure-toi que l'action existe dans Input Actions
 			input.SlowWalkAction = "SlowWalk"; // idem
 		}
 
@@ -85,47 +85,6 @@ public static class Astrofront_Controller_Rules
 		{
 			// Pas bloquant
 			// Log.Warning( "[Astrofront_Controller_Rules] MyCustomControllerCamera introuvable." );
-		}
-
-		// =========================
-		// ANIMS (tuning global)
-		// =========================
-		var anim = player.Components.Get<CitizenAnimDriver>( FindMode.EverythingInSelfAndDescendants );
-		if ( anim != null )
-		{
-			// Exemple de tuning global multi-modes (walk/fly/zeroG)
-			anim.WalkRunBlendSpeed = 220f;
-
-			// Les poids d’aim peuvent être fixés ici aussi
-			anim.AimStrengthEyes = 1f;
-			anim.AimStrengthHead = 1f;
-			anim.AimStrengthBody = 0.2f;
-		}
-
-		// =========================
-		// APPARENCE (Dresser)
-		// =========================
-		var body = player.Components.Get<SkinnedModelRenderer>( FindMode.EverythingInSelfAndDescendants );
-		if ( body == null )
-		{
-			Log.Warning( "[Astrofront_Controller_Rules] SkinnedModelRenderer introuvable (apparence non appliquée)." );
-		}
-		else
-		{
-			body.Model = Model.Load( "models/citizen/citizen.vmdl" );
-
-			var dresser = body.Components.Get<Dresser>( FindMode.EverythingInSelfAndDescendants );
-			if ( dresser == null )
-				dresser = body.Components.Create<Dresser>();
-
-			dresser.BodyTarget = body;
-
-			// ✅ Multi correct : chaque client voit l’avatar du owner réseau
-			dresser.Source = Dresser.ClothingSource.OwnerConnection;
-
-			dresser.Apply();
-		}
-
-		Log.Info( "[Astrofront_Controller_Rules] Applied local astrofront custom controller settings." );
+		} 
 	}
 }

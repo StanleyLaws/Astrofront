@@ -116,11 +116,13 @@ public sealed class ModeRulesBootstrap : Component
 		switch ( Mode )
 		{
 			case ModeId.Lobby:
-				Lobby_SboxController_Rules.ApplyLocal( localPlayer );
+				Lobby_Controller_Rules.ApplyLocal( localPlayer );
+				Lobby_Citizen_Rules.ApplyLocal( localPlayer );
 				break;
 
 			case ModeId.Astrofront:
 				Astrofront_Controller_Rules.ApplyLocal( localPlayer );
+				Astrofront_Citizen_Rules.ApplyLocal( localPlayer );
 				break;
 		}
 	}

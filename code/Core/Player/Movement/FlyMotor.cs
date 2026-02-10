@@ -4,27 +4,39 @@ using System;
 namespace Astrofront;
 
 /// Motor de vol simple (déplacement 3D libre).
-/// - Pas de gravité
+/// - Pas de gravité (par défaut)
 /// - Accélération vers une vélocité cible
 /// - "Air friction" pour stopper progressivement
 ///
 /// Notes:
-/// - On utilise MoveAxis (2D) pour le plan caméra (forward/right)
-/// - Pour monter/descendre, on réutilise JumpHeld / DuckHeld (temporaire, proprement extensible plus tard)
+/// - MoveAxis = plan caméra (right/forward)
+/// - Vertical : JumpHeld = monter, DuckHeld = descendre
 public sealed class FlyMotor : IMovementMotor
 {
-	// Réglages internes par défaut (peuvent être exposés plus tard via context si besoin)
 	private const float VerticalSpeed = 240f;
-	private const float AirFriction = 4.0f; // plus haut = stop plus vite
+	private const float AirFriction = 4.0f;
 
-	public void OnActivated( MovementMotorContext context )
-	{
-		// Rien
-	}
+	// Petit kick pour "décoller" quand on est encore au sol
+	private const float TakeoffImpulse = 220f;
 
-	public void OnDeactivated( MovementMotorContext context )
+	public void OnActivated( MovementMotorContext context ) { }
+	public void OnDeactivated( MovementMotorContext context ) { }
+
+	public void GetAnimHints( ref MovementMotorAnimHints hints )
 	{
-		// Rien
+		// Tant qu'on n'a pas un vrai état "fly" dans le graph,
+		// on évite l'état "falling" (bras qui tombent).
+		// => On force grounded=true.
+		hints.OverrideGrounded = true;
+		hints.Grounded = true;
+
+		// Laisse le mode "standard" pour l’instant.
+		// (On fera un vrai move_style/special_state quand tu auras un état fly/noclip propre dans le graph)
+		hints.MoveStyle = 0;
+		hints.SpecialMovementStates = 0;
+		hints.HoldType = 0;
+
+		hints.AnimSpeedMultiplier = 1f;
 	}
 
 	public void Step( MovementMotorContext ctx )
@@ -34,49 +46,77 @@ public sealed class FlyMotor : IMovementMotor
 
 		float dt = ctx.DeltaTime;
 
-		// Direction basée caméra
-		Vector3 fwd = cc.GameObject.WorldRotation.Forward;
-		Vector3 right = fwd.Cross( Vector3.Up ).Normal;
+		// ------------------------------------
+		// Axes caméra / fallback yaw
+		// ------------------------------------
+		Vector3 forward;
+		Vector3 right;
+		Vector3 upAxis = Vector3.Up;
 
-		if ( ctx.Camera != null )
+		if ( ctx.Camera != null && ctx.Camera.Enabled )
 		{
-			var camFwd = ctx.Camera.WorldRotation.Forward;
-			var camRight = ctx.Camera.WorldRotation.Right;
+			forward = ctx.Camera.WorldRotation.Forward.Normal;
 
-			// On garde un espace caméra complet (3D), mais on stabilise un minimum
-			fwd = camFwd.Normal;
-			right = camRight.Normal;
+			// ✅ IMPORTANT : right = forward x up (même convention que ton WalkMotor)
+			right = forward.Cross( upAxis ).Normal;
+
+			// si caméra regarde quasi verticalement -> fallback yaw
+			if ( right.IsNearlyZero() )
+			{
+				var yaw = ctx.Camera.WorldRotation.Forward.WithZ( 0f );
+				if ( yaw.IsNearlyZero() ) yaw = Vector3.Forward;
+
+				var basis = Rotation.LookAt( yaw.Normal, Vector3.Up );
+				forward = basis.Forward;
+				right = basis.Right;
+			}
+		}
+		else
+		{
+			var yaw = cc.GameObject.WorldRotation.Forward.WithZ( 0f );
+			if ( yaw.IsNearlyZero() ) yaw = Vector3.Forward;
+
+			var basis = Rotation.LookAt( yaw.Normal, Vector3.Up );
+			forward = basis.Forward;
+			right = basis.Right;
 		}
 
-		// Wish velocity horizontale (dans l’espace caméra)
-		Vector3 wishVel =
-			(right * ctx.MoveAxis.x + fwd * ctx.MoveAxis.y);
-
-		if ( wishVel.LengthSquared > 1e-6f )
-			wishVel = wishVel.Normal;
+		// ------------------------------------
+		// Wish velocity (plan caméra)
+		// ------------------------------------
+		Vector3 wishDir = (right * ctx.MoveAxis.x) + (forward * ctx.MoveAxis.y);
+		if ( wishDir.LengthSquared > 1e-6f )
+			wishDir = wishDir.Normal;
 
 		float speed = ctx.DesiredSpeed * ctx.SpeedMultiplier;
-		wishVel *= speed;
+		Vector3 wishVel = wishDir * speed;
 
-		// Vertical (temporaire) : JumpHeld = monter, DuckHeld = descendre
+		// ------------------------------------
+		// Vertical
+		// ------------------------------------
 		float up = 0f;
 		if ( ctx.JumpHeld ) up += 1f;
 		if ( ctx.DuckHeld ) up -= 1f;
 
-		wishVel += Vector3.Up * (up * VerticalSpeed);
+		// ✅ Décollage fiable : si on appuie Jump et qu'on touche le sol, on kick
+		// pour casser le contact. Ensuite le maintien JumpHeld fait monter.
+		if ( ctx.JumpPressed && cc.IsOnGround )
+			cc.Punch( upAxis * TakeoffImpulse );
 
-		// Lerp vers la vélocité cible
+		wishVel += upAxis * (up * VerticalSpeed);
+
+		// ------------------------------------
+		// Accel vers target + air friction
+		// ------------------------------------
 		var vel = cc.Velocity;
 
 		float accel = MathF.Max( 0.1f, ctx.Acceleration );
 		vel = Vector3.Lerp( vel, wishVel, accel * dt );
 
-		// Air friction pour s’arrêter en relâchant
+		// Stop doux quand input relâché
 		vel = vel.LerpTo( Vector3.Zero, AirFriction * dt );
 
 		cc.Velocity = vel;
-
-		// Move
 		cc.Move();
 	}
 }
