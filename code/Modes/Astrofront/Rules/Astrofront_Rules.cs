@@ -20,17 +20,33 @@ public static class Astrofront_Rules
 			return;
 		}
 
+		// =========================
 		// UI (Astrofront)
+		// =========================
 		ctx.SetUiHost(
 			vitalbarEnabled: true,
 			invhudEnabled: true,
 			inventoryManagePanelEnabled: true
 		);
 
+		// =========================
 		// Gameplay permissions (Astrofront)
+		// =========================
 		ctx.SetGameplayHost(
 			pvpEnabled: true,
 			useEnabled: true
+		);
+
+		// =========================
+		// VIEW / CAMERA PERMISSIONS (CORE)
+		// =========================
+		// Astrofront: on autorise FP + TP, et le viewmodel (mains/bras layer ViewModel) en FP.
+		// Legs off tant que tu n'as pas de legs-only asset.
+		ctx.SetViewHost(
+			firstPerson: true,
+			thirdPerson: true,
+			viewModel: true,
+			legsInFp: false
 		);
 
 		// =========================
@@ -70,10 +86,6 @@ public static class Astrofront_Rules
 		var sprint = player.Components.Get<SboxSprintEnergyDriver>( FindMode.EverythingInSelfAndDescendants );
 		if ( sprint != null )
 		{
-			// enabled: true
-			// drainPerSecond: 15 énergie/sec pendant sprint
-			// minEnergyToSprint: 1 (ou mets 5 si tu veux éviter le "micro sprint")
-			// useMinThreshold: true => sprint coupé dès qu'on passe sous MinEnergyToSprint
 			sprint.ConfigureHost(
 				enabled: true,
 				drainPerSecond: 15f,

@@ -9,6 +9,12 @@ public sealed class MyCustomController : Component
 	[Property, Group("Refs")] public CharacterController CharacterController { get; set; }
 	[Property, Group("Refs")] public PlayerMovementInput MovementInput { get; set; }
 
+	/// ✅ NOUVEAU: le GameObject qui reçoit la rotation yaw (visuel).
+	/// IMPORTANT: le root physique (capsule + caméra) ne devrait pas tourner si la caméra est enfant.
+	/// - Par défaut = GameObject (rétro-compat)
+	/// - Recommandé = GO du mesh (ex: "Body"/"Citizen"/"Visual")
+	[Property, Group("Orientation")] public GameObject OrientationRoot { get; set; }
+
 	private IMovementMotor _motor;
 
 	// ✅ Motor par défaut (configurable par Rules/Prefab)
@@ -49,6 +55,13 @@ public sealed class MyCustomController : Component
 	[Property, Group("Orientation")] public ThirdPersonFacingMode ThirdPersonFacing { get; set; } = ThirdPersonFacingMode.CameraYaw;
 	[Property, Group("Orientation")] public float AlignRotateSpeed { get; set; } = 12f;
 
+	// ✅ Turn-in-place (arc)
+	[Property, Group("Orientation")] public float ThirdPersonRearArcHalfAngle { get; set; } = 60f;
+	[Property, Group("Orientation")] public float ThirdPersonMoveAlignSpeedMul { get; set; } = 2.0f;
+
+	// ✅ Yaw lock en mouvement
+	[Property, Group("Orientation")] public float ThirdPersonMoveYawLockFollowSpeed { get; set; } = 10f;
+
 	// ---------------- Capsule ----------------
 	[Property, Group("Capsule")] public float StandRadius { get; set; } = 16f;
 	[Property, Group("Capsule")] public float StandHeight { get; set; } = 72f;
@@ -79,6 +92,10 @@ public sealed class MyCustomController : Component
 
 	private float _duck;
 
+	// ✅ Yaw lock state
+	private bool _wasMovingLastFrame = false;
+	private float _moveYawLockDeg = 0f;
+
 	public bool IsGrounded => CharacterController?.IsOnGround ?? false;
 	public Vector3 Velocity => CharacterController?.Velocity ?? default;
 	public float Radius => CharacterController?.Radius ?? StandRadius;
@@ -86,9 +103,31 @@ public sealed class MyCustomController : Component
 	public float DuckAmount => _duck;
 	public bool IsDucking => _duck > 0.5f;
 
+	// --------------------
+	// OrientationRoot helpers
+	// --------------------
+	private GameObject GetOrientationRoot()
+	{
+		// Fallback propre
+		return OrientationRoot ?? GameObject;
+	}
+
+	private Rotation GetOrientationRotation()
+	{
+		return GetOrientationRoot().WorldRotation;
+	}
+
+	private void SetOrientationRotation( Rotation rot )
+	{
+		GetOrientationRoot().WorldRotation = rot;
+	}
+
 	protected override void OnStart()
 	{
 		EnsureRefs();
+
+		// ✅ default: si non assigné, on reste rétro-compat (root tourne)
+		OrientationRoot ??= GameObject;
 
 		if ( CharacterController == null )
 		{
@@ -117,14 +156,20 @@ public sealed class MyCustomController : Component
 		}
 
 		RebuildAnimHints();
+
+		// init yaw lock (sur OrientationRoot)
+		_wasMovingLastFrame = false;
+		_moveYawLockDeg = GetOrientationRotation().Angles().yaw;
 	}
 
 	protected override void OnUpdate()
 	{
 		if ( IsProxy ) return;
 
-		// ✅ plus besoin du latch maison : PlayerMovementInput le gère
 		EnsureRefs();
+
+		// Orientation en Update => fluide
+		UpdateOrientation();
 	}
 
 	protected override void OnFixedUpdate()
@@ -139,28 +184,22 @@ public sealed class MyCustomController : Component
 
 		UpdateDuck();
 		ApplyCapsuleFromDuck();
-		UpdateOrientation();
 
-		// ✅ Latch fiable Update->Fixed (et edge uniquement si gameplay input ok)
 		bool jumpPressed = MovementInput.CanGameplayInput && MovementInput.JumpPressedLatched;
 
 		var ctx = BuildContext( jumpPressed );
 
-		// ✅ 1) Motor hints
 		var hints = MovementMotorAnimHints.Default;
 		_motor.GetAnimHints( ref hints );
 
-		// ✅ 2) Apply mode policy overrides (si activé)
 		if ( UseAnimationPolicy )
 			ApplyAnimationPolicy( ref hints );
 
-		// ✅ 3) Source de vérité
 		LastAnimHints = hints;
 		ctx.AnimHints = hints;
 
 		_motor.Step( ctx );
 
-		// ✅ consommer seulement après Step()
 		MovementInput.ConsumeJumpPressedLatch();
 	}
 
@@ -168,6 +207,9 @@ public sealed class MyCustomController : Component
 	{
 		CharacterController ??= Components.Get<CharacterController>( FindMode.InSelf );
 		MovementInput ??= Components.Get<PlayerMovementInput>( FindMode.EverythingInSelfAndAncestors );
+
+		// OrientationRoot: si non assigné, on garde GameObject
+		OrientationRoot ??= GameObject;
 	}
 
 	private void RebuildAnimHints()
@@ -311,40 +353,108 @@ public sealed class MyCustomController : Component
 		if ( MovementInput == null ) return;
 		if ( !MovementInput.CanGameplayInput ) return;
 
+		// Yaw caméra (plat)
 		var camFwdFlat = Camera.WorldRotation.Forward.WithZ( 0 );
 		if ( camFwdFlat.IsNearlyZero() ) return;
+
 		var cameraYawRot = Rotation.LookAt( camFwdFlat.Normal, Vector3.Up );
 
+		// Detect FP/TP via brain (robuste)
 		bool isFirstPerson = false;
-		var camBrain = Camera.Components.Get<MyCustomControllerCamera>( FindMode.EverythingInSelfAndAncestors );
+		var camBrain =
+			Camera.Components.Get<MyCustomControllerCamera>( FindMode.EverythingInSelfAndAncestors ) ??
+			Camera.Components.Get<MyCustomControllerCamera>( FindMode.EverythingInSelfAndDescendants );
+
 		if ( camBrain != null && camBrain.Mode == MyCustomControllerCamera.CameraMode.FirstPerson )
 			isFirstPerson = true;
 
+		// FP : align direct si demandé
 		if ( isFirstPerson && FirstPersonAlwaysAlignYaw )
 		{
-			WorldRotation = Rotation.Lerp( WorldRotation, cameraYawRot, AlignRotateSpeed * Time.Delta );
+			SetOrientationRotation( Rotation.Lerp( GetOrientationRotation(), cameraYawRot, AlignRotateSpeed * Time.Delta ) );
 			return;
 		}
+
+		// ---- Third person ----
+		bool hasMoveInput = MovementInput.MoveAxis.LengthSquared > 1e-6f;
+
+		const float yawDeadzoneDeg = 0.75f;
+
+		float bodyYaw = GetOrientationRotation().Angles().yaw;
+		float camYaw = cameraYawRot.Angles().yaw;
+		float delta = Angles.NormalizeAngle( camYaw - bodyYaw );
+		float absDelta = MathF.Abs( delta );
+
+		Rotation targetYawRot;
 
 		if ( ThirdPersonFacing == ThirdPersonFacingMode.CameraYaw )
 		{
-			if ( MovementInput.MoveAxis.LengthSquared > 1e-6f )
-				WorldRotation = Rotation.Lerp( WorldRotation, cameraYawRot, AlignRotateSpeed * Time.Delta );
+			if ( hasMoveInput )
+			{
+				if ( !_wasMovingLastFrame )
+					_moveYawLockDeg = camYaw;
+
+				float follow = MathF.Max( 0f, ThirdPersonMoveYawLockFollowSpeed );
+				if ( follow > 0f )
+				{
+					float dLock = Angles.NormalizeAngle( camYaw - _moveYawLockDeg );
+					_moveYawLockDeg = _moveYawLockDeg + dLock * (follow * Time.Delta).Clamp( 0f, 1f );
+				}
+
+				targetYawRot = Rotation.From( new Angles( 0f, _moveYawLockDeg, 0f ) );
+			}
+			else
+			{
+				float arc = MathF.Max( 0f, ThirdPersonRearArcHalfAngle );
+
+				if ( absDelta <= arc )
+				{
+					_wasMovingLastFrame = false;
+					return;
+				}
+
+				float desiredBodyYaw = camYaw - MathF.Sign( delta ) * arc;
+				targetYawRot = Rotation.From( new Angles( 0f, desiredBodyYaw, 0f ) );
+			}
+
+			_wasMovingLastFrame = hasMoveInput;
+
+			float tYaw = targetYawRot.Angles().yaw;
+			float d2 = Angles.NormalizeAngle( tYaw - bodyYaw );
+			if ( MathF.Abs( d2 ) < yawDeadzoneDeg )
+				return;
+
+			float speed = AlignRotateSpeed * (hasMoveInput ? ThirdPersonMoveAlignSpeedMul : 1f);
+			SetOrientationRotation( Rotation.Lerp( GetOrientationRotation(), targetYawRot, speed * Time.Delta ) );
 			return;
 		}
 
+		// Facing = MoveDirection
 		var move2 = MovementInput.MoveAxis;
-		if ( move2.LengthSquared <= 1e-6f ) return;
+		if ( move2.LengthSquared <= 1e-6f )
+		{
+			_wasMovingLastFrame = false;
+			return;
+		}
 
 		var fwd = cameraYawRot.Forward;
 		var right = fwd.Cross( Vector3.Up ).Normal;
 		var wishDir = (right * move2.x + fwd * move2.y).WithZ( 0 );
 
-		if ( !wishDir.IsNearlyZero() )
+		if ( wishDir.IsNearlyZero() )
 		{
-			var targetYaw = Rotation.LookAt( wishDir.Normal, Vector3.Up );
-			WorldRotation = Rotation.Lerp( WorldRotation, targetYaw, AlignRotateSpeed * Time.Delta );
+			_wasMovingLastFrame = false;
+			return;
 		}
+
+		targetYawRot = Rotation.LookAt( wishDir.Normal, Vector3.Up );
+
+		float targetYaw = targetYawRot.Angles().yaw;
+		float dMove = Angles.NormalizeAngle( targetYaw - bodyYaw );
+		if ( MathF.Abs( dMove ) < yawDeadzoneDeg )
+			return;
+
+		SetOrientationRotation( Rotation.Lerp( GetOrientationRotation(), targetYawRot, AlignRotateSpeed * Time.Delta ) );
 	}
 
 	// =========================================================

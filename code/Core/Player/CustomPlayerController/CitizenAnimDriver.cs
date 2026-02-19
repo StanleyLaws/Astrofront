@@ -6,16 +6,24 @@ namespace Astrofront;
 /// Pilote citizen.vanmgrph à partir de MyCustomController + Camera.
 /// Ne gère QUE l'animation (pas la physique).
 ///
+/// Multi-target:
+/// - Body : world model (renderer principal)
+/// - Legs : renderer additionnel (ex: legs-only local FPS) recevant les mêmes paramètres
+///
 /// Robust:
 /// - Force l'override d'AnimationGraph (certains composants peuvent reset le renderer)
 /// - Ré-applique au début + fin d'OnUpdate
 ///
 /// Turn-in-place:
-/// - Alimente move_rotationspeed (deg/sec) à partir du yaw du Body.
+/// - Alimente move_rotationspeed (deg/sec) à partir du yaw du Body (fallback: GameObject)
 public sealed class CitizenAnimDriver : Component
 {
 	[Property, Group("Refs")] public MyCustomController Controller { get; set; }
 	[Property, Group("Refs")] public SkinnedModelRenderer Body { get; set; }
+
+	/// Renderer optionnel (ex: legs-only) recevant les mêmes paramètres que Body.
+	[Property, Group("Refs")] public SkinnedModelRenderer Legs { get; set; }
+
 	[Property, Group("Refs")] public CameraComponent Camera { get; set; }
 
 	[Property, Group("Graph")] public string GraphPath { get; set; } = "models/citizen/citizen.vanmgrph";
@@ -46,23 +54,29 @@ public sealed class CitizenAnimDriver : Component
 	protected override void OnStart()
 	{
 		ResolveRefs();
-		ForceApplyGraph();
+		ForceApplyGraph( Body );
+		ForceApplyGraph( Legs );
 
 		_lastPos = Controller != null ? Controller.WorldPosition : WorldPosition;
 		_lastDuck = Controller != null ? Controller.DuckAmount : 0f;
 
-		_lastYawDeg = GetYawDeg( GameObject.WorldRotation );
+		_lastYawDeg = GetYawDeg( GetYawSourceRotation() );
 		_smoothedYawSpeed = 0f;
 	}
 
 	protected override void OnUpdate()
 	{
 		ResolveRefs();
-		if ( Body == null ) return;
 
-		ForceApplyGraph();
+		// Si aucun renderer, rien à faire
+		if ( Body == null && Legs == null ) return;
 
-		if ( !Body.UseAnimGraph || Body.AnimationGraph == null )
+		// Graphs (robuste)
+		ForceApplyGraph( Body );
+		ForceApplyGraph( Legs );
+
+		// Si on a un renderer, il doit être utilisable. (legs peut être null)
+		if ( !HasValidAnimGraph( Body ) && !HasValidAnimGraph( Legs ) )
 			return;
 
 		// Owner local = calcule wish_* depuis MovementInput + envoie aim via RPC
@@ -73,19 +87,10 @@ public sealed class CitizenAnimDriver : Component
 		// --------------------------------------------------------
 		var hints = Controller != null ? Controller.LastAnimHints : MovementMotorAnimHints.Default;
 
-		Body.Set( "move_style", hints.MoveStyle );
-		Body.Set( "special_movement_states", hints.SpecialMovementStates );
-		Body.Set( "holdtype", hints.HoldType );
-
-		if ( hints.ForceFirstPersonFlag )
-			Body.Set( "b_firstperson", hints.FirstPersonFlag );
-
-		float animMul = (hints.AnimSpeedMultiplier <= 0f) ? 1f : hints.AnimSpeedMultiplier;
-
 		// --------------------------------------------------------
 		// Turn-in-place: move_rotationspeed (deg/sec)
 		// --------------------------------------------------------
-		float yawDeg = GetYawDeg( GameObject.WorldRotation );
+		float yawDeg = GetYawDeg( GetYawSourceRotation() );
 		float deltaYaw = Angles.NormalizeAngle( yawDeg - _lastYawDeg );
 		_lastYawDeg = yawDeg;
 
@@ -126,7 +131,7 @@ public sealed class CitizenAnimDriver : Component
 			hasMoveInput = mag > 0.01f;
 
 			// citizen.vanmgrph : wish_x=forward, wish_y=right
-			// On garde le même "scale" qu'avant, mais sans inversions incohérentes.
+			float animMul = (hints.AnimSpeedMultiplier <= 0f) ? 1f : hints.AnimSpeedMultiplier;
 			float mul = duckSpeedMul * animMul;
 
 			wish_x = ( move2.y * WalkRunBlendSpeed ) * mul;
@@ -170,12 +175,6 @@ public sealed class CitizenAnimDriver : Component
 		if ( hints.OverrideGrounded )
 			grounded = hints.Grounded;
 
-		// --------------------------------------------------------
-		// Apply params au graph
-		// --------------------------------------------------------
-		Body.Set( "duck", duckVal );
-		Body.Set( "b_ducking", duckVal > 0.5f );
-
 		// AIM
 		Vector3 aimDir;
 		if ( isLocalOwner && Camera != null && Camera.Enabled )
@@ -194,50 +193,121 @@ public sealed class CitizenAnimDriver : Component
 			aimDir = _syncedAimDir;
 		}
 
-		Body.Set( "aim_body", aimDir );
-		Body.Set( "aim_head", aimDir );
-		Body.Set( "aim_eyes", aimDir );
-		Body.Set( "aim_body_weight", AimStrengthBody );
-		Body.Set( "aim_head_weight", AimStrengthHead );
-		Body.Set( "aim_eyes_weight", AimStrengthEyes );
+		// --------------------------------------------------------
+		// Apply params au(x) renderer(s)
+		// --------------------------------------------------------
+		ApplyAllParams( Body,
+			hints, duckVal, hasMoveInput, grounded,
+			aimDir,
+			wish_x, wish_y, wish_speed, wish_direction,
+			move_x, move_y, move_spd, move_direction,
+			_smoothedYawSpeed,
+			justExitedDuck );
+
+		ApplyAllParams( Legs,
+			hints, duckVal, hasMoveInput, grounded,
+			aimDir,
+			wish_x, wish_y, wish_speed, wish_direction,
+			move_x, move_y, move_spd, move_direction,
+			_smoothedYawSpeed,
+			justExitedDuck );
+
+		// Ré-apply robuste (certains composants reset)
+		ForceApplyGraph( Body );
+		ForceApplyGraph( Legs );
+	}
+
+	private void ApplyAllParams(
+		SkinnedModelRenderer r,
+		MovementMotorAnimHints hints,
+		float duckVal,
+		bool hasMoveInput,
+		bool grounded,
+		Vector3 aimDir,
+		float wish_x, float wish_y, float wish_speed, float wish_direction,
+		float move_x, float move_y, float move_spd, float move_direction,
+		float moveRotationSpeed,
+		bool justExitedDuck )
+	{
+		if ( r == null ) return;
+		if ( !HasValidAnimGraph( r ) ) return;
+
+		r.Set( "move_style", hints.MoveStyle );
+		r.Set( "special_movement_states", hints.SpecialMovementStates );
+		r.Set( "holdtype", hints.HoldType );
+
+		if ( hints.ForceFirstPersonFlag )
+			r.Set( "b_firstperson", hints.FirstPersonFlag );
+
+		r.Set( "duck", duckVal );
+		r.Set( "b_ducking", duckVal > 0.5f );
+
+		// AIM
+		r.Set( "aim_body", aimDir );
+		r.Set( "aim_head", aimDir );
+		r.Set( "aim_eyes", aimDir );
+		r.Set( "aim_body_weight", AimStrengthBody );
+		r.Set( "aim_head_weight", AimStrengthHead );
+		r.Set( "aim_eyes_weight", AimStrengthEyes );
 
 		// Intentions / movement
-		Body.Set( "wish_x", wish_x );
-		Body.Set( "wish_y", wish_y );
-		Body.Set( "wish_speed", wish_speed );
-		Body.Set( "wish_groundspeed", wish_speed );
-		Body.Set( "wish_direction", wish_direction );
-		Body.Set( "has_move_input", hasMoveInput );
+		r.Set( "wish_x", wish_x );
+		r.Set( "wish_y", wish_y );
+		r.Set( "wish_speed", wish_speed );
+		r.Set( "wish_groundspeed", wish_speed );
+		r.Set( "wish_direction", wish_direction );
+		r.Set( "has_move_input", hasMoveInput );
 
-		Body.Set( "move_x", move_x );
-		Body.Set( "move_y", move_y );
-		Body.Set( "move_speed", move_spd );
-		Body.Set( "move_groundspeed", move_spd );
-		Body.Set( "move_direction", move_direction );
+		r.Set( "move_x", move_x );
+		r.Set( "move_y", move_y );
+		r.Set( "move_speed", move_spd );
+		r.Set( "move_groundspeed", move_spd );
+		r.Set( "move_direction", move_direction );
 
-		Body.Set( "move_rotationspeed", _smoothedYawSpeed );
+		r.Set( "move_rotationspeed", moveRotationSpeed );
 
 		bool moving = (move_spd > 1.0f) || (justExitedDuck && hasMoveInput);
 		if ( hints.OverrideMoving )
 			moving = hints.Moving;
 
-		Body.Set( "moving", moving );
-		Body.Set( "b_grounded", grounded );
-		Body.Set( "b_grouned", grounded );
+		r.Set( "moving", moving );
+		r.Set( "b_grounded", grounded );
 
-		ForceApplyGraph();
+		// Back-compat typo déjà présent
+		r.Set( "b_grouned", grounded );
 	}
 
 	private void ResolveRefs()
 	{
+		// Body: même logique qu'avant
 		Body ??= Components.Get<SkinnedModelRenderer>( FindMode.EverythingInSelfAndDescendants );
 		Controller ??= Components.Get<MyCustomController>( FindMode.EverythingInSelfAndAncestors );
+
+		// Camera: récup depuis controller
 		if ( Camera is null && Controller != null ) Camera = Controller.Camera;
+
+		// Legs: on tente une résolution automatique non-invasive :
+		// - d'abord via propriété (si déjà assignée, on ne touche pas)
+		// - sinon, on cherche un renderer explicitement nommé "Legs" dans les descendants
+		if ( Legs == null )
+		{
+			foreach ( var r in Components.GetAll<SkinnedModelRenderer>( FindMode.EverythingInSelfAndDescendants ) )
+			{
+				if ( r == null ) continue;
+				if ( r == Body ) continue;
+
+				if ( string.Equals( r.GameObject?.Name, "Legs", StringComparison.OrdinalIgnoreCase ) )
+				{
+					Legs = r;
+					break;
+				}
+			}
+		}
 	}
 
-	private void ForceApplyGraph()
+	private void ForceApplyGraph( SkinnedModelRenderer r )
 	{
-		if ( Body == null ) return;
+		if ( r == null ) return;
 
 		if ( _loadedGraph == null && !string.IsNullOrEmpty( GraphPath ) )
 			_loadedGraph = AnimationGraph.Load( GraphPath );
@@ -245,10 +315,24 @@ public sealed class CitizenAnimDriver : Component
 		if ( _loadedGraph == null || _loadedGraph.IsError )
 			return;
 
-		Body.UseAnimGraph = true;
+		r.UseAnimGraph = true;
 
-		if ( Body.AnimationGraph != _loadedGraph )
-			Body.AnimationGraph = _loadedGraph;
+		if ( r.AnimationGraph != _loadedGraph )
+			r.AnimationGraph = _loadedGraph;
+	}
+
+	private bool HasValidAnimGraph( SkinnedModelRenderer r )
+	{
+		if ( r == null ) return false;
+		if ( !r.UseAnimGraph ) return false;
+		return r.AnimationGraph != null;
+	}
+
+	private Rotation GetYawSourceRotation()
+	{
+		// Turn-in-place: idéalement basé sur le body si présent (car le body peut être décalé dans la hiérarchie)
+		if ( Body != null ) return Body.WorldRotation;
+		return GameObject.WorldRotation;
 	}
 
 	private static float GetYawDeg( Rotation rot )

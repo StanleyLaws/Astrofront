@@ -33,6 +33,38 @@ public sealed class PlayerState : Component
 		// Sert à retrouver le joueur local facilement côté UI / rules bootstrap.
 		if ( !IsProxy )
 			GameObject.Tags.Add( "localplayer" );
+
+		// --- TEST PIPELINE HELD ITEM (Host only) ---
+		// IMPORTANT: InventoryComponent peut ne pas avoir encore fait son OnStart ici.
+		// On décale d'1 frame pour éviter NullReference sur GetSlotsSnapshot().
+		if ( Networking.IsHost )
+		{
+			GiveTestItemAfterInventoryInit();
+		}
+
+		async void GiveTestItemAfterInventoryInit()
+		{
+			// 1 frame suffit généralement pour que InventoryComponent.OnStart() ait initialisé ses arrays.
+			await GameTask.Delay( 1 );
+
+			if ( !this.IsValid() || !GameObject.IsValid() ) return;
+
+			var inv = GameObject.Components.Get<InventoryComponent>( FindMode.EverythingInSelfAndDescendants );
+			if ( inv == null ) return;
+
+			var snap = inv.GetSlotsSnapshot();
+			bool slot1Empty =
+				snap == null || snap.Count <= 1 ||
+				string.IsNullOrEmpty( snap[1].ItemId ) ||
+				snap[1].Amount <= 0;
+
+			if ( slot1Empty )
+			{
+				const string TestItemId = "core.test.item";
+				inv.AddHost( TestItemId, 1 );
+				Log.Info( $"[PlayerState] Gave test item '{TestItemId}' to inventory (host)." );
+			}
+		}
 	}
 
 	// --- API Host neutre ---

@@ -1,0 +1,93 @@
+{
+  "RootObject": {
+    "__guid": "222e3e9e-5701-4306-a20d-1af92104a3ac",
+    "__version": 2,
+    "Flags": 0,
+    "Name": "test_stelliumitem",
+    "Position": "0,0,13.58891",
+    "Rotation": "0,0,0,1",
+    "Scale": "0.4920079,0.4586919,0.4340669",
+    "Tags": "",
+    "Enabled": true,
+    "NetworkMode": 2,
+    "NetworkFlags": 0,
+    "NetworkOrphaned": 0,
+    "NetworkTransmit": true,
+    "OwnerTransfer": 1,
+    "Components": [
+      {
+        "__type": "Sandbox.ModelRenderer",
+        "__guid": "a990b50c-92bc-452f-a75f-cfa7923e9a49",
+        "__enabled": true,
+        "Flags": 0,
+        "BodyGroups": 18446744073709551615,
+        "CreateAttachments": false,
+        "LodOverride": null,
+        "MaterialGroup": null,
+        "MaterialOverride": null,
+        "Materials": null,
+        "Model": null,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "RenderOptions": {
+          "GameLayer": true,
+          "OverlayLayer": false,
+          "BloomLayer": false,
+          "AfterUILayer": false
+        },
+        "RenderType": "On",
+        "Tint": "0.08956,0.74998,0.83721,1"
+      },
+      {
+        "__type": "Astrofront.ItemViewModelHands",
+        "__guid": "9a8b93d9-b1bd-45a8-8d50-38341e20a1ab",
+        "__enabled": true,
+        "Flags": 0,
+        "CameraZNear": 1,
+        "DebugLogs": true,
+        "HandsModel": "models/first_person/v_first_person_arms_human.vmdl",
+        "LocalAngles": "0,0,0",
+        "LocalOffset": "5,0,0",
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "ViewModelCameraPriority": 2,
+        "ViewModelTag": "viewmodel"
+      }
+    ],
+    "Children": [],
+    "__properties": {
+      "NetworkInterpolation": true,
+      "TimeScale": 1,
+      "WantsSystemScene": true,
+      "Metadata": {},
+      "NavMesh": {
+        "Enabled": false,
+        "IncludeStaticBodies": true,
+        "IncludeKeyframedBodies": true,
+        "EditorAutoUpdate": false,
+        "AgentHeight": 64,
+        "AgentRadius": 16,
+        "AgentStepSize": 18,
+        "AgentMaxSlope": 40,
+        "ExcludedBodies": "",
+        "IncludedBodies": ""
+      }
+    },
+    "__variables": []
+  },
+  "ResourceVersion": 2,
+  "ShowInMenu": false,
+  "MenuPath": null,
+  "MenuIcon": null,
+  "DontBreakAsTemplate": false,
+  "__references": [],
+  "__version": 2
+}

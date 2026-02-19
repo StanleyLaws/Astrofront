@@ -37,8 +37,6 @@ public sealed class GroundItemPickup : Component
 	{
 		if ( _renderer == null ) return;
 
-		var model = ItemRegistry.GetWorldModel( ItemId );
-		_renderer.Model = model ?? Model.Load( "models/dev/box.vmdl" );
 	}
 
 	/// <summary>

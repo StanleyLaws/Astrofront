@@ -38,13 +38,24 @@ public static class Lobby_Rules
 		);
 
 		// =========================
+		// VIEW / CAMERA PERMISSIONS (CORE)
+		// =========================
+		// Lobby: tu avais dit "FPS/TP autorisés".
+		// - viewModel = true => bras/hands en couche ViewModel quand le joueur est en FP
+		// - legsInFp = false tant que tu n'as pas de legs-only asset (ça ne cassera rien)
+		ctx.SetViewHost(
+			firstPerson: true,
+			thirdPerson: true,
+			viewModel: true,
+			legsInFp: false
+		);
+
+		// =========================
 		// ENERGY SYSTEM (désactivé en Lobby)
 		// =========================
-
 		var energy = player.Components.Get<PlayerEnergySystem>( FindMode.EverythingInSelfAndDescendants );
 		if ( energy != null )
 		{
-			// Coupe complètement la simulation énergie
 			energy.SetEnergyEnabledHost( false );
 		}
 

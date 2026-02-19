@@ -6,11 +6,6 @@ namespace Astrofront;
 /// Contexte UI + permissions gameplay "soft" pilotées par les Rules.
 /// - Agnostique du controller (S&box / custom)
 /// - Décidé par le HOST puis sync aux clients
-///
-/// Noms demandés :
-/// - vitalbar
-/// - invhud
-/// - inventorymanagepanel
 /// </summary>
 public sealed class PlayerUiContext : Component
 {
@@ -38,6 +33,24 @@ public sealed class PlayerUiContext : Component
 	[Sync( SyncFlags.FromHost )]
 	public bool use { get; private set; } = true;
 
+	// ===== View / Camera permissions (CORE FPS SYSTEM) =====
+
+	/// <summary>Le joueur peut utiliser la vue première personne.</summary>
+	[Sync( SyncFlags.FromHost )]
+	public bool allowFirstPerson { get; private set; } = true;
+
+	/// <summary>Le joueur peut utiliser la vue troisième personne.</summary>
+	[Sync( SyncFlags.FromHost )]
+	public bool allowThirdPerson { get; private set; } = true;
+
+	/// <summary>Autorise le rendu des bras viewmodel en FPS.</summary>
+	[Sync( SyncFlags.FromHost )]
+	public bool allowViewModel { get; private set; } = true;
+
+	/// <summary>Autorise l'affichage des jambes locales en FPS.</summary>
+	[Sync( SyncFlags.FromHost )]
+	public bool allowLegsInFirstPerson { get; private set; } = true;
+
 	// ===== Host API =====
 
 	/// <summary>
@@ -64,11 +77,28 @@ public sealed class PlayerUiContext : Component
 	}
 
 	/// <summary>
-	/// Helpers de lecture côté client/serveur (agnostiques).
+	/// Définit les permissions de vue (FPS/TPS/ViewModel/Legs) — HOST only.
 	/// </summary>
+	public void SetViewHost( bool firstPerson, bool thirdPerson, bool viewModel, bool legsInFp )
+	{
+		if ( !Networking.IsHost ) return;
+
+		allowFirstPerson = firstPerson;
+		allowThirdPerson = thirdPerson;
+		allowViewModel = viewModel;
+		allowLegsInFirstPerson = legsInFp;
+	}
+
+	// ===== Helpers de lecture =====
+
 	public bool IsInventoryManageAllowed => inventorymanagepanel;
 	public bool IsInvHudAllowed => invhud;
 	public bool IsVitalbarAllowed => vitalbar;
 	public bool IsPvpAllowed => pvp;
 	public bool IsUseAllowed => use;
+
+	public bool CanUseFirstPerson => allowFirstPerson;
+	public bool CanUseThirdPerson => allowThirdPerson;
+	public bool CanUseViewModel => allowViewModel;
+	public bool CanUseLegsInFirstPerson => allowLegsInFirstPerson;
 }

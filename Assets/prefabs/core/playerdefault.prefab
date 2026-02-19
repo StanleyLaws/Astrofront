@@ -47,13 +47,29 @@
         "GroundFriction": 6,
         "JumpBuffer": 0.12,
         "JumpSpeed": 360,
-        "MovementInput": null,
+        "MovementInput": {
+          "_type": "component",
+          "component_id": "a08e6d06-9875-4b28-8ac0-dff27aae6435",
+          "go": "8b992bbe-9059-41b4-8c90-6b7098fcfc44",
+          "component_type": "PlayerMovementInput"
+        },
         "OnComponentDestroy": null,
         "OnComponentDisabled": null,
         "OnComponentEnabled": null,
         "OnComponentFixedUpdate": null,
         "OnComponentStart": null,
         "OnComponentUpdate": null,
+        "OrientationRoot": {
+          "_type": "gameobject",
+          "go": "bd2edebd-0c4f-4194-9f05-9af3f4889ad3"
+        },
+        "PolicyAnimSpeedMultiplier": 1,
+        "PolicyForceFirstPerson": -1,
+        "PolicyForceGrounded": -1,
+        "PolicyForceMoving": -1,
+        "PolicyHoldTypeOverride": -1,
+        "PolicyMoveStyleOverride": -1,
+        "PolicySpecialStatesOverride": -1,
         "SlowWalkSpeed": 120,
         "SprintSpeed": 320,
         "StandHeight": 72,
@@ -61,6 +77,10 @@
         "StepHeight": 18,
         "StopSpeed": 120,
         "ThirdPersonFacing": "CameraYaw",
+        "ThirdPersonMoveAlignSpeedMul": 2,
+        "ThirdPersonMoveYawLockFollowSpeed": 10,
+        "ThirdPersonRearArcHalfAngle": 60,
+        "UseAnimationPolicy": true,
         "WalkSpeed": 220
       },
       {
@@ -120,6 +140,113 @@
         "OnComponentUpdate": null,
         "SecondMotorId": "astrofront_fly",
         "ToggleAction": "Test"
+      },
+      {
+        "__type": "Astrofront.PlayerUiContext",
+        "__guid": "18f612b9-b847-430c-ad7d-a6dbb15e84a3",
+        "__enabled": true,
+        "Flags": 0,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null
+      },
+      {
+        "__type": "Astrofront.PlayerState",
+        "__guid": "8c56e593-511b-4c78-8ad8-c3c6b5255b05",
+        "__enabled": true,
+        "Flags": 0,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null
+      },
+      {
+        "__type": "Astrofront.InventoryComponent",
+        "__guid": "e6d3921c-20ff-43da-8d61-fee987eed804",
+        "__enabled": true,
+        "Flags": 0,
+        "CapacitySpace": 10,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "SelectedIndex": 0,
+        "SlotCount": 5
+      },
+      {
+        "__type": "Astrofront.InventoryHudInputController",
+        "__guid": "5a5c6a1c-0f1e-41c3-9cf0-282d1cf4aa11",
+        "__enabled": true,
+        "Flags": 0,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null
+      },
+      {
+        "__type": "Astrofront.UiInteractionController",
+        "__guid": "a59ebd31-31aa-444a-89f4-55a135dc5764",
+        "__enabled": true,
+        "Flags": 0,
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null
+      },
+      {
+        "__type": "Astrofront.HeldItemPresenter",
+        "__guid": "0e4d28d7-fb86-4e61-81c9-a7c12c255396",
+        "__enabled": true,
+        "Flags": 0,
+        "AttachPoint": null,
+        "DebugLogs": true,
+        "LocalAngles": "0,0,0",
+        "LocalOffset": "0,0,0",
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "ViewModelTag": "viewmodel"
+      },
+      {
+        "__type": "Astrofront.LocalFirstPersonBodyVisibility",
+        "__guid": "1279cf13-bf8a-4040-b6be-cfb05d37daa4",
+        "__enabled": true,
+        "Flags": 0,
+        "BodyObject": {
+          "_type": "gameobject",
+          "go": "bd2edebd-0c4f-4194-9f05-9af3f4889ad3"
+        },
+        "CameraController": {
+          "_type": "component",
+          "component_id": "b4cfb9a6-a4c4-4ee4-ae51-999f3df1cac3",
+          "go": "a6284002-c50b-4e37-b718-1162ff49b933",
+          "component_type": "MyCustomControllerCamera"
+        },
+        "LegsObject": {
+          "_type": "gameobject",
+          "go": "406f6480-349d-47bc-8e7b-dffb71973823"
+        },
+        "OnComponentDestroy": null,
+        "OnComponentDisabled": null,
+        "OnComponentEnabled": null,
+        "OnComponentFixedUpdate": null,
+        "OnComponentStart": null,
+        "OnComponentUpdate": null,
+        "ViewModelTag": "viewmodel"
       }
     ],
     "Children": [
@@ -152,7 +279,11 @@
             "LodOverride": null,
             "MaterialGroup": "default",
             "MaterialOverride": null,
-            "Materials": null,
+            "Materials": {
+              "indexed": {
+                "0": "models/citizen/skin/citizen_skin01.vmat"
+              }
+            },
             "Model": "models/citizen/citizen.vmdl",
             "Morphs": {},
             "OnComponentDestroy": null,
@@ -212,6 +343,12 @@
               "component_type": "MyCustomController"
             },
             "GraphPath": "models/citizen/citizen.vanmgrph",
+            "Legs": {
+              "_type": "component",
+              "component_id": "cf389551-0cb2-47f6-abbd-4da94972cdc9",
+              "go": "406f6480-349d-47bc-8e7b-dffb71973823",
+              "component_type": "SkinnedModelRenderer"
+            },
             "OnComponentDestroy": null,
             "OnComponentDisabled": null,
             "OnComponentEnabled": null,
@@ -246,6 +383,28 @@
             "OnComponentUpdate": null,
             "Source": "OwnerConnection",
             "WorkshopItems": []
+          },
+          {
+            "__type": "Sandbox.ModelHitboxes",
+            "__guid": "b34bbd08-5225-4a79-91c0-31606b90e0d1",
+            "__enabled": true,
+            "Flags": 0,
+            "OnComponentDestroy": null,
+            "OnComponentDisabled": null,
+            "OnComponentEnabled": null,
+            "OnComponentFixedUpdate": null,
+            "OnComponentStart": null,
+            "OnComponentUpdate": null,
+            "Renderer": {
+              "_type": "component",
+              "component_id": "ac55ff69-8068-4696-bf3a-0f03dc179896",
+              "go": "bd2edebd-0c4f-4194-9f05-9af3f4889ad3",
+              "component_type": "SkinnedModelRenderer"
+            },
+            "Target": {
+              "_type": "gameobject",
+              "go": "8b992bbe-9059-41b4-8c90-6b7098fcfc44"
+            }
           }
         ],
         "Children": [
@@ -272,7 +431,7 @@
             "__version": 2,
             "Flags": 0,
             "Name": "HeadAnchor",
-            "Position": "0,0,0",
+            "Position": "7.919561,0,63.27346",
             "Rotation": "0,0,0,1",
             "Scale": "1,1,1",
             "Tags": "",
@@ -1585,6 +1744,81 @@
                                                 ]
                                               }
                                             ]
+                                          },
+                                          {
+                                            "__guid": "5e4f411c-a63d-4802-9c44-b2ea405d2906",
+                                            "__version": 2,
+                                            "Flags": 0,
+                                            "Name": "finger_pinky_meta_L",
+                                            "Position": "1.523453,-0.7553673,0.04973793",
+                                            "Rotation": "0.136352,0.1114037,0.2108944,-0.9615203",
+                                            "Scale": "1,1,1",
+                                            "Tags": "",
+                                            "Enabled": true,
+                                            "NetworkMode": 2,
+                                            "NetworkFlags": 0,
+                                            "NetworkOrphaned": 0,
+                                            "NetworkTransmit": true,
+                                            "OwnerTransfer": 1,
+                                            "Components": [],
+                                            "Children": [
+                                              {
+                                                "__guid": "d23bf8e6-4d1d-4e43-985b-0f9461e63702",
+                                                "__version": 2,
+                                                "Flags": 0,
+                                                "Name": "finger_pinky_0_L",
+                                                "Position": "2.096767,-0.000005722046,0.000009536743",
+                                                "Rotation": "-0.02725515,0.1040727,-0.03149974,-0.993697",
+                                                "Scale": "1,1,1",
+                                                "Tags": "",
+                                                "Enabled": true,
+                                                "NetworkMode": 2,
+                                                "NetworkFlags": 0,
+                                                "NetworkOrphaned": 0,
+                                                "NetworkTransmit": true,
+                                                "OwnerTransfer": 1,
+                                                "Components": [],
+                                                "Children": [
+                                                  {
+                                                    "__guid": "87045c24-7da1-486c-8550-192f84212816",
+                                                    "__version": 2,
+                                                    "Flags": 0,
+                                                    "Name": "finger_pinky_1_L",
+                                                    "Position": "1.470713,0.00001144409,0.00001335144",
+                                                    "Rotation": "0,0.1945789,0,-0.9808868",
+                                                    "Scale": "1,1,1",
+                                                    "Tags": "",
+                                                    "Enabled": true,
+                                                    "NetworkMode": 2,
+                                                    "NetworkFlags": 0,
+                                                    "NetworkOrphaned": 0,
+                                                    "NetworkTransmit": true,
+                                                    "OwnerTransfer": 1,
+                                                    "Components": [],
+                                                    "Children": [
+                                                      {
+                                                        "__guid": "589251a2-22c9-40fe-9956-23802fda1822",
+                                                        "__version": 2,
+                                                        "Flags": 0,
+                                                        "Name": "finger_pinky_2_L",
+                                                        "Position": "0.8326397,0.00003051758,0.00008392334",
+                                                        "Rotation": "-0.00000001490116,0.03509161,0,-0.9993845",
+                                                        "Scale": "1,1,1",
+                                                        "Tags": "",
+                                                        "Enabled": true,
+                                                        "NetworkMode": 2,
+                                                        "NetworkFlags": 0,
+                                                        "NetworkOrphaned": 0,
+                                                        "NetworkTransmit": true,
+                                                        "OwnerTransfer": 1,
+                                                        "Components": [],
+                                                        "Children": []
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              }
+                                            ]
                                           }
                                         ]
                                       },
@@ -2069,6 +2303,81 @@
                                                 ]
                                               }
                                             ]
+                                          },
+                                          {
+                                            "__guid": "f6206b09-0892-4afa-acc2-62607a20fc29",
+                                            "__version": 2,
+                                            "Flags": 0,
+                                            "Name": "finger_pinky_meta_R",
+                                            "Position": "1.523443,-0.7553658,-0.04968452",
+                                            "Rotation": "-0.1363519,-0.1114038,0.2108945,-0.9615203",
+                                            "Scale": "1,1,1",
+                                            "Tags": "",
+                                            "Enabled": true,
+                                            "NetworkMode": 2,
+                                            "NetworkFlags": 0,
+                                            "NetworkOrphaned": 0,
+                                            "NetworkTransmit": true,
+                                            "OwnerTransfer": 1,
+                                            "Components": [],
+                                            "Children": [
+                                              {
+                                                "__guid": "02989805-ce8a-4466-8662-4f85b241f377",
+                                                "__version": 2,
+                                                "Flags": 0,
+                                                "Name": "finger_pinky_0_R",
+                                                "Position": "2.096767,-0.000005245209,0.00001907349",
+                                                "Rotation": "0.02725506,-0.1040726,-0.03149979,-0.9936973",
+                                                "Scale": "1,1,1",
+                                                "Tags": "",
+                                                "Enabled": true,
+                                                "NetworkMode": 2,
+                                                "NetworkFlags": 0,
+                                                "NetworkOrphaned": 0,
+                                                "NetworkTransmit": true,
+                                                "OwnerTransfer": 1,
+                                                "Components": [],
+                                                "Children": [
+                                                  {
+                                                    "__guid": "09c3d562-2f8f-4dfe-b42d-448bf2ca4640",
+                                                    "__version": 2,
+                                                    "Flags": 0,
+                                                    "Name": "finger_pinky_1_R",
+                                                    "Position": "1.470741,-0.0000333786,0.00003051758",
+                                                    "Rotation": "0,-0.1945789,-0.00000001490116,-0.9808873",
+                                                    "Scale": "1,1,1",
+                                                    "Tags": "",
+                                                    "Enabled": true,
+                                                    "NetworkMode": 2,
+                                                    "NetworkFlags": 0,
+                                                    "NetworkOrphaned": 0,
+                                                    "NetworkTransmit": true,
+                                                    "OwnerTransfer": 1,
+                                                    "Components": [],
+                                                    "Children": [
+                                                      {
+                                                        "__guid": "192e22ef-2f9b-43b9-bc8c-c790b238aebc",
+                                                        "__version": 2,
+                                                        "Flags": 0,
+                                                        "Name": "finger_pinky_2_R",
+                                                        "Position": "0.8325653,-0.00003576279,0.00003814697",
+                                                        "Rotation": "-0.00000001490116,-0.03509162,-0.00000002235174,-0.9993845",
+                                                        "Scale": "1,1,1",
+                                                        "Tags": "",
+                                                        "Enabled": true,
+                                                        "NetworkMode": 2,
+                                                        "NetworkFlags": 0,
+                                                        "NetworkOrphaned": 0,
+                                                        "NetworkTransmit": true,
+                                                        "OwnerTransfer": 1,
+                                                        "Components": [],
+                                                        "Children": []
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              }
+                                            ]
                                           }
                                         ]
                                       },
@@ -2079,6 +2388,24 @@
                                         "Name": "arm_lower_R_twist1",
                                         "Position": "0,0,0",
                                         "Rotation": "0,0,0,1",
+                                        "Scale": "1,1,1",
+                                        "Tags": "",
+                                        "Enabled": true,
+                                        "NetworkMode": 2,
+                                        "NetworkFlags": 0,
+                                        "NetworkOrphaned": 0,
+                                        "NetworkTransmit": true,
+                                        "OwnerTransfer": 1,
+                                        "Components": [],
+                                        "Children": []
+                                      },
+                                      {
+                                        "__guid": "3e2de789-f3da-4179-bb2c-878015b73825",
+                                        "__version": 2,
+                                        "Flags": 0,
+                                        "Name": "arm_elbow_helper_R",
+                                        "Position": "-0.01807404,-0.03466988,0.000003814697",
+                                        "Rotation": "0.0007783771,0.0005098246,0.7815234,-0.6238751",
                                         "Scale": "1,1,1",
                                         "Tags": "",
                                         "Enabled": true,
@@ -2667,6 +2994,80 @@
                 "OwnerTransfer": 1,
                 "Components": [],
                 "Children": []
+              },
+              {
+                "__guid": "4006cfc3-6e41-4498-a515-8c46ce2ad18b",
+                "__version": 2,
+                "Flags": 0,
+                "Name": "hand_R_IK_attach",
+                "Position": "-0.1967773,0,0.00000005960464",
+                "Rotation": "0,0,0,1",
+                "Scale": "1,1,1",
+                "Tags": "",
+                "Enabled": true,
+                "NetworkMode": 2,
+                "NetworkFlags": 0,
+                "NetworkOrphaned": 0,
+                "NetworkTransmit": true,
+                "OwnerTransfer": 1,
+                "Components": [],
+                "Children": [
+                  {
+                    "__guid": "17978393-e3e6-432d-bd39-34f3d43b1261",
+                    "__version": 2,
+                    "Flags": 0,
+                    "Name": "hand_R_IK_target",
+                    "Position": "-0.3207186,-11.15093,34.26428",
+                    "Rotation": "0.3860929,0.4538157,-0.4172135,0.6862336",
+                    "Scale": "1,1,1",
+                    "Tags": "",
+                    "Enabled": true,
+                    "NetworkMode": 2,
+                    "NetworkFlags": 0,
+                    "NetworkOrphaned": 0,
+                    "NetworkTransmit": true,
+                    "OwnerTransfer": 1,
+                    "Components": [],
+                    "Children": []
+                  }
+                ]
+              },
+              {
+                "__guid": "247725be-187a-48bc-b0c1-69c5d49ec854",
+                "__version": 2,
+                "Flags": 0,
+                "Name": "hand_L_IK_attach",
+                "Position": "-0.1967773,0,0.00000005960464",
+                "Rotation": "0,0,0,1",
+                "Scale": "1,1,1",
+                "Tags": "",
+                "Enabled": true,
+                "NetworkMode": 2,
+                "NetworkFlags": 0,
+                "NetworkOrphaned": 0,
+                "NetworkTransmit": true,
+                "OwnerTransfer": 1,
+                "Components": [],
+                "Children": [
+                  {
+                    "__guid": "5edaf4ca-e894-4779-822d-723864894123",
+                    "__version": 2,
+                    "Flags": 0,
+                    "Name": "hand_L_IK_target",
+                    "Position": "-0.3206374,11.15087,34.26416",
+                    "Rotation": "0.6862336,0.4172134,-0.4538157,0.3860929",
+                    "Scale": "1,1,1",
+                    "Tags": "",
+                    "Enabled": true,
+                    "NetworkMode": 2,
+                    "NetworkFlags": 0,
+                    "NetworkOrphaned": 0,
+                    "NetworkTransmit": true,
+                    "OwnerTransfer": 1,
+                    "Components": [],
+                    "Children": []
+                  }
+                ]
               }
             ]
           }
@@ -2720,7 +3121,7 @@
           {
             "__type": "Astrofront.OwnerOnlyCamera",
             "__guid": "3f04a83b-8c60-441c-bdac-834f894b8269",
-            "__enabled": true,
+            "__enabled": false,
             "Flags": 0,
             "Camera": {
               "_type": "component",
@@ -2740,18 +3141,27 @@
             "__guid": "b4cfb9a6-a4c4-4ee4-ae51-999f3df1cac3",
             "__enabled": true,
             "Flags": 0,
-            "AllowToggle": false,
+            "AllowToggle": true,
+            "AutoFindAnchorByName": true,
             "CameraTracePadding": 2,
             "CameraTraceRadius": 4,
+            "DebugDrawSeconds": 0,
+            "DebugThirdPersonCamera": true,
+            "DetachFromParentOnStart": false,
             "Distance": 180,
+            "FallbackEyeHeight": 64,
             "FirstPersonAnchor": {
               "_type": "gameobject",
               "go": "d4cdd04c-e244-436e-a3ed-c1bbb84e85fe"
             },
             "FirstPersonLocalOffset": "0,0,0",
-            "HeightOffset": 50,
-            "MaxPitch": 45,
-            "MinPitch": -10,
+            "FirstPersonMaxPitch": 89,
+            "FirstPersonMinPitch": -89,
+            "FirstPersonPosLerp": 80,
+            "FirstPersonRotLerp": 120,
+            "FirstPersonUseSmoothing": false,
+            "FocusHeightOffset": 64,
+            "MinCameraDistanceToFocus": 8,
             "Mode": "ThirdPerson",
             "MouseSensitivity": 0.15,
             "OnComponentDestroy": null,
@@ -2760,15 +3170,128 @@
             "OnComponentFixedUpdate": null,
             "OnComponentStart": null,
             "OnComponentUpdate": null,
-            "PosLerp": 12,
-            "RearArcHalfAngle": 45,
-            "RotateTargetWhenArcExceeded": true,
-            "RotLerp": 16,
+            "ShoulderOffset": 0,
             "Target": {
               "_type": "gameobject",
               "go": "8b992bbe-9059-41b4-8c90-6b7098fcfc44"
             },
+            "ThirdPersonMaxPitch": 89,
+            "ThirdPersonMinPitch": -89,
+            "ThirdPersonPosLerp": 12,
+            "ThirdPersonRotLerp": 16,
             "ToggleAction": "view"
+          }
+        ],
+        "Children": []
+      },
+      {
+        "__guid": "35804c1e-06ef-4945-8cd3-062472f7e178",
+        "__version": 2,
+        "Flags": 0,
+        "Name": "ViewModelCamera",
+        "Position": "0,0,0",
+        "Rotation": "0,0,0,1",
+        "Scale": "1,1,1",
+        "Tags": "maincamera",
+        "Enabled": true,
+        "NetworkMode": 2,
+        "NetworkFlags": 0,
+        "NetworkOrphaned": 0,
+        "NetworkTransmit": true,
+        "OwnerTransfer": 1,
+        "Components": [
+          {
+            "__type": "Sandbox.CameraComponent",
+            "__guid": "70f912a6-877a-4222-a674-0e7187eb285e",
+            "__enabled": false,
+            "Flags": 0,
+            "BackgroundColor": "0.33333,0.46275,0.52157,1",
+            "ClearFlags": "All",
+            "EnablePostProcessing": true,
+            "FieldOfView": 60,
+            "FovAxis": "Horizontal",
+            "IsMainCamera": true,
+            "OnComponentDestroy": null,
+            "OnComponentDisabled": null,
+            "OnComponentEnabled": null,
+            "OnComponentFixedUpdate": null,
+            "OnComponentStart": null,
+            "OnComponentUpdate": null,
+            "Orthographic": false,
+            "OrthographicHeight": 1204,
+            "PostProcessAnchor": null,
+            "Priority": 1,
+            "RenderExcludeTags": "",
+            "RenderTags": "",
+            "RenderTexture": null,
+            "TargetEye": "None",
+            "Viewport": "0,0,1,1",
+            "ZFar": 10000,
+            "ZNear": 10
+          }
+        ],
+        "Children": []
+      },
+      {
+        "__guid": "406f6480-349d-47bc-8e7b-dffb71973823",
+        "__version": 2,
+        "Flags": 0,
+        "Name": "Legs",
+        "Position": "-15.20772,0,0",
+        "Rotation": "0,0,0,1",
+        "Scale": "1,1,1",
+        "Tags": "",
+        "Enabled": false,
+        "NetworkMode": 2,
+        "NetworkFlags": 0,
+        "NetworkOrphaned": 0,
+        "NetworkTransmit": true,
+        "OwnerTransfer": 1,
+        "Components": [
+          {
+            "__type": "Sandbox.SkinnedModelRenderer",
+            "__guid": "cf389551-0cb2-47f6-abbd-4da94972cdc9",
+            "__enabled": true,
+            "Flags": 0,
+            "AnimationGraph": null,
+            "BodyGroups": 272,
+            "BoneMergeTarget": null,
+            "CreateAttachments": false,
+            "CreateBoneObjects": false,
+            "LodOverride": null,
+            "MaterialGroup": null,
+            "MaterialOverride": null,
+            "Materials": null,
+            "Model": "models/citizen/citizen.vmdl",
+            "Morphs": {},
+            "OnComponentDestroy": null,
+            "OnComponentDisabled": null,
+            "OnComponentEnabled": null,
+            "OnComponentFixedUpdate": null,
+            "OnComponentStart": null,
+            "OnComponentUpdate": null,
+            "Parameters": {
+              "bools": {},
+              "ints": {},
+              "floats": {},
+              "vectors": {},
+              "rotations": {}
+            },
+            "PlaybackRate": 1,
+            "RenderOptions": {
+              "GameLayer": true,
+              "OverlayLayer": false,
+              "BloomLayer": false,
+              "AfterUILayer": false
+            },
+            "RenderType": "On",
+            "Sequence": {
+              "Name": null,
+              "Looping": true,
+              "Blending": false
+            },
+            "Tint": "1,1,1,1",
+            "UseAnimGraph": true
           }
         ],
         "Children": []

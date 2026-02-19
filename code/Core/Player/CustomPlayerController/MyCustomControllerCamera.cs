@@ -3,9 +3,10 @@ using Sandbox;
 namespace Astrofront;
 
 /// Caméra unique scalable (ThirdPerson + FirstPerson) :
-/// - ThirdPerson : arc arrière + anti-clipping (trace vers la caméra)
-/// - FirstPerson : ancrage tête/yeux (anchor) + rotation libre
-/// - Optionnel : toggle via Input action string (sans dépendre d'une enum InputActions)
+/// - ThirdPerson : orbit libre autour du joueur + anti-clipping
+/// - FirstPerson : anchor tête/yeux + rotation libre
+/// - IMPORTANT: ApplyTransform() est fait en OnPreRender() pour gagner contre les "post-moves"
+///   (héritage de parent transform / autres scripts qui écrivent après OnUpdate).
 public sealed class MyCustomControllerCamera : Component
 {
 	// --------------------
@@ -18,9 +19,6 @@ public sealed class MyCustomControllerCamera : Component
 	}
 
 	[Property, Group( "Mode" )] public CameraMode Mode { get; set; } = CameraMode.ThirdPerson;
-
-	/// Si true, on peut toggle le mode via un input action name (string).
-	/// Exemple: "view" / "camera" / "duck" etc selon tes bindings.
 	[Property, Group( "Mode" )] public bool AllowToggle { get; set; } = false;
 	[Property, Group( "Mode" )] public string ToggleAction { get; set; } = "view";
 
@@ -31,41 +29,73 @@ public sealed class MyCustomControllerCamera : Component
 	[Property, Group( "Refs" )] public GameObject FirstPersonAnchor { get; set; }  // tête/yeux (optionnel)
 
 	// --------------------
+	// Robust
+	// --------------------
+	[Property, Group( "Robust" )] public bool DetachFromParentOnStart { get; set; } = false;
+
+	// --------------------
 	// Common tuning
 	// --------------------
 	[Property, Group( "Common" )] public float MouseSensitivity { get; set; } = 0.15f;
-	[Property, Group( "Common" )] public float MinPitch { get; set; } = -10f;
-	[Property, Group( "Common" )] public float MaxPitch { get; set; } = 45f;
-	[Property, Group( "Common" )] public float PosLerp { get; set; } = 12f;
-	[Property, Group( "Common" )] public float RotLerp { get; set; } = 16f;
+
+	// TP: smoothing agréable
+	[Property, Group( "Common" )] public float ThirdPersonPosLerp { get; set; } = 12f;
+	[Property, Group( "Common" )] public float ThirdPersonRotLerp { get; set; } = 16f;
+
+	// FP: zéro inertie (par défaut)
+	[Property, Group( "Common" )] public bool FirstPersonUseSmoothing { get; set; } = false;
+	[Property, Group( "Common" )] public float FirstPersonPosLerp { get; set; } = 80f;
+	[Property, Group( "Common" )] public float FirstPersonRotLerp { get; set; } = 120f;
 
 	// --------------------
 	// Third Person
 	// --------------------
-	[Property, Group( "ThirdPerson" )] public float Distance { get; set; } = 180f;           // distance caméra
-	[Property, Group( "ThirdPerson" )] public float HeightOffset { get; set; } = 20f;        // focus au-dessus du joueur
-	[Property, Group( "ThirdPerson" )] public float RearArcHalfAngle { get; set; } = 45f;    // demi-arc derrière le joueur (°)
-	[Property, Group( "ThirdPerson" )] public bool RotateTargetWhenArcExceeded { get; set; } = true;
+	[Property, Group( "ThirdPerson" )] public float Distance { get; set; } = 240f;
+	[Property, Group( "ThirdPerson" )] public float FocusHeightOffset { get; set; } = 64f;
 
-	/// Anti-clipping en TP : rayon de trace pour éviter de traverser les murs.
+	[Property, Group( "ThirdPerson" )] public float ShoulderOffset { get; set; } = 18f;
+
+	[Property, Group( "ThirdPerson" )] public float ThirdPersonMinPitch { get; set; } = -89f;
+	[Property, Group( "ThirdPerson" )] public float ThirdPersonMaxPitch { get; set; } = 89f;
+
+	[Property, Group( "ThirdPerson" )] public float MinCameraDistanceToFocus { get; set; } = 8f;
+
 	[Property, Group( "ThirdPerson" )] public float CameraTraceRadius { get; set; } = 4f;
-	[Property, Group( "ThirdPerson" )] public float CameraTracePadding { get; set; } = 2f; // décale un peu du mur
+	[Property, Group( "ThirdPerson" )] public float CameraTracePadding { get; set; } = 2f;
 
 	// --------------------
 	// First Person
 	// --------------------
-	/// Offset local appliqué depuis l'anchor FP (ex: léger recul/hauteur).
-	[Property, Group( "FirstPerson" )] public Vector3 FirstPersonLocalOffset { get; set; } = Vector3.Zero;
+	// ✅ Pitch FP séparé (plus libre que l'ancien -10/45)
+	[Property, Group( "FirstPerson" )] public float FirstPersonMinPitch { get; set; } = -89f;
+	[Property, Group( "FirstPerson" )] public float FirstPersonMaxPitch { get; set; } = 89f;
+
+	// ✅ Offset FP "safe" par défaut : léger recul + légère montée
+	// (ajuste dans l'inspecteur si tu veux)
+	[Property, Group( "FirstPerson" )] public Vector3 FirstPersonLocalOffset { get; set; } = new Vector3( -6f, 0f, 2f );
+
+	[Property, Group( "FirstPerson" )] public float FallbackEyeHeight { get; set; } = 64f;
+	[Property, Group( "FirstPerson" )] public bool AutoFindAnchorByName { get; set; } = true;
+
+	// --------------------
+	// Debug
+	// --------------------
+	[Property, Group( "Debug" )] public bool DebugThirdPersonCamera { get; set; } = false;
+	[Property, Group( "Debug" )] public float DebugDrawSeconds { get; set; } = 0f;
 
 	// --------------------
 	// Internal state
 	// --------------------
-	private float _yawDeg;    // monde (yaw)
-	private float _pitchDeg;  // pitch
+	private float _yawDeg;
+	private float _pitchDeg;
 	private Vector3 _goalPos;
 	private Rotation _goalRot;
 
 	private CameraComponent _cam;
+
+	private Vector3 _lastAppliedPos;
+	private Rotation _lastAppliedRot;
+	private bool _hasLastApplied;
 
 	protected override void OnStart()
 	{
@@ -73,10 +103,29 @@ public sealed class MyCustomControllerCamera : Component
 		if ( _cam == null ) return;
 		if ( Target is null ) return;
 
-		// Init : yaw aligné avec le forward du joueur, pitch au milieu des bornes
+		if ( DetachFromParentOnStart && GameObject.Parent != null )
+		{
+			GameObject.SetParent( null, keepWorldPosition: true );
+		}
+
+		if ( FirstPersonAnchor == null && AutoFindAnchorByName )
+			FirstPersonAnchor = TryFindFirstPersonAnchor( Target );
+
 		float frontYaw = GetYawDeg( Target.WorldRotation.Forward );
 		_yawDeg = frontYaw;
-		_pitchDeg = ((MinPitch + MaxPitch) * 0.5f).Clamp( MinPitch, MaxPitch );
+
+		// ✅ init pitch selon mode
+		if ( Mode == CameraMode.FirstPerson )
+			_pitchDeg = ((FirstPersonMinPitch + FirstPersonMaxPitch) * 0.5f).Clamp( FirstPersonMinPitch, FirstPersonMaxPitch );
+		else
+			_pitchDeg = ((ThirdPersonMinPitch + ThirdPersonMaxPitch) * 0.5f).Clamp( ThirdPersonMinPitch, ThirdPersonMaxPitch );
+
+		_goalRot = Rotation.From( new Angles( _pitchDeg, _yawDeg, 0f ) );
+		_goalPos = WorldPosition;
+
+		_lastAppliedPos = WorldPosition;
+		_lastAppliedRot = WorldRotation;
+		_hasLastApplied = true;
 	}
 
 	protected override void OnUpdate()
@@ -85,99 +134,123 @@ public sealed class MyCustomControllerCamera : Component
 		if ( _cam == null || !_cam.Enabled ) return;
 		if ( Target is null ) return;
 
-		// Bloque input caméra quand UI modale
 		if ( UiModalController.IsUiLockedLocal ) return;
 
-		// Toggle optionnel (string) pour ne pas dépendre d'une classe InputActions
+		if ( DebugThirdPersonCamera && _hasLastApplied )
+		{
+			var dp = (WorldPosition - _lastAppliedPos).Length;
+			var dy = Angles.NormalizeAngle( WorldRotation.Angles().yaw - _lastAppliedRot.Angles().yaw );
+
+			if ( dp > 0.25f || System.MathF.Abs( dy ) > 0.25f )
+			{
+				DebugOverlay.ScreenText(
+					new Vector2( 40, 80 ),
+					$"[Cam Debug] External move since last apply: dp={dp:F2} dyaw={dy:F2}",
+					16f, TextFlag.LeftTop, Color.Orange, 0f
+				);
+			}
+		}
+
 		if ( AllowToggle && !string.IsNullOrWhiteSpace( ToggleAction ) && Input.Pressed( ToggleAction ) )
 		{
 			Mode = (Mode == CameraMode.ThirdPerson) ? CameraMode.FirstPerson : CameraMode.ThirdPerson;
+			RecenterFromCurrentCameraRotation();
 
-			// Optionnel : ré-ancrer le yaw à la rotation actuelle de la cam pour éviter un "snap"
-			_yawDeg = GetYawDeg( WorldRotation.Forward );
+			if ( Mode == CameraMode.FirstPerson && FirstPersonAnchor == null && AutoFindAnchorByName )
+				FirstPersonAnchor = TryFindFirstPersonAnchor( Target );
 		}
 
-		// 1) Lire la souris - INVERSION demandée :
-		//    - souris vers le bas => cam MONTE  (pitch++)
-		//    - souris vers la droite => cam va à DROITE du perso (yaw--)
+		// Input souris
 		var md = Input.MouseDelta;
 		_yawDeg -= md.x * MouseSensitivity;
 		_pitchDeg += md.y * MouseSensitivity;
-		_pitchDeg = _pitchDeg.Clamp( MinPitch, MaxPitch );
 
-		// 2) Construire la rotation voulue (commune)
+		// ✅ Clamp pitch selon mode (FP séparé)
+		if ( Mode == CameraMode.ThirdPerson )
+			_pitchDeg = _pitchDeg.Clamp( ThirdPersonMinPitch, ThirdPersonMaxPitch );
+		else
+			_pitchDeg = _pitchDeg.Clamp( FirstPersonMinPitch, FirstPersonMaxPitch );
+
 		_goalRot = Rotation.From( new Angles( _pitchDeg, _yawDeg, 0f ) );
 
-		// 3) Calculer position selon mode
 		if ( Mode == CameraMode.FirstPerson )
-			UpdateFirstPerson();
+			UpdateFirstPersonGoals();
 		else
-			UpdateThirdPerson();
-
-		// 4) Smoothing
-		WorldRotation = Rotation.Lerp( WorldRotation, _goalRot, RotLerp * Time.Delta );
-		WorldPosition = Vector3.Lerp( WorldPosition, _goalPos, PosLerp * Time.Delta );
+			UpdateThirdPersonGoals();
 	}
 
-	private void UpdateFirstPerson()
+	protected override void OnPreRender()
 	{
-		// Anchor : si non assigné -> fallback sur Target
-		var anchor = FirstPersonAnchor ?? Target;
+		if ( IsProxy ) return;
+		if ( _cam == null || !_cam.Enabled ) return;
+		if ( Target is null ) return;
 
-		// Pose de base = anchor
-		var basePos = anchor.WorldPosition;
-		var baseRot = anchor.WorldRotation;
+		ApplyTransform();
 
-		// On veut une rotation caméra pilotée par souris.
-		// L'anchor sert surtout de point de position (et éventuellement pour un futur "headbob"/animation).
-		// Offset FP en espace local de la caméra (pratique pour reculer/monter)
-		var offsetWorld = _goalRot * FirstPersonLocalOffset;
-
-		_goalPos = basePos + offsetWorld;
-
-		// En FP : pas d'arc clamp, pas de rotate target automatique ici
-		// (si tu veux tourner le perso en FP, ce sera une responsabilité du controller, pas de la caméra)
+		_lastAppliedPos = WorldPosition;
+		_lastAppliedRot = WorldRotation;
+		_hasLastApplied = true;
 	}
 
-	private void UpdateThirdPerson()
+	private void ApplyTransform()
 	{
-		// Confinement arc arrière + rotation target si dépassement
-		float frontYaw = GetYawDeg( Target.WorldRotation.Forward );
-
-		float relDesired = ShortestAngleDeg( _yawDeg, frontYaw ); // [-180,180]
-		float clamped = relDesired.Clamp( -RearArcHalfAngle, +RearArcHalfAngle );
-
-		if ( RotateTargetWhenArcExceeded && !relDesired.AlmostEqual( clamped, 0.0001f ) )
+		if ( Mode == CameraMode.FirstPerson )
 		{
-			float overflow = relDesired - clamped;
-			float newFront = NormalizeDeg( frontYaw + overflow );
+			if ( !FirstPersonUseSmoothing )
+			{
+				WorldRotation = _goalRot;
+				WorldPosition = _goalPos;
+				return;
+			}
 
-			var targetAngles = Target.WorldRotation.Angles();
-			targetAngles = new Angles( 0f, newFront, 0f );
-			Target.WorldRotation = Rotation.From( targetAngles );
-
-			frontYaw = newFront;
+			WorldRotation = Rotation.Lerp( WorldRotation, _goalRot, FirstPersonRotLerp * Time.Delta );
+			WorldPosition = Vector3.Lerp( WorldPosition, _goalPos, FirstPersonPosLerp * Time.Delta );
+			return;
 		}
 
-		// Yaw final confiné à l'arc
-		_yawDeg = NormalizeDeg( frontYaw + clamped );
+		WorldRotation = Rotation.Lerp( WorldRotation, _goalRot, ThirdPersonRotLerp * Time.Delta );
+		WorldPosition = Vector3.Lerp( WorldPosition, _goalPos, ThirdPersonPosLerp * Time.Delta );
+	}
 
-		// Recalcule rotation car yaw peut avoir été modifié par l'arc clamp
-		_goalRot = Rotation.From( new Angles( _pitchDeg, _yawDeg, 0f ) );
+	private void UpdateFirstPersonGoals()
+	{
+		if ( FirstPersonAnchor != null )
+		{
+			var basePos = FirstPersonAnchor.WorldPosition;
+			var offsetWorld = _goalRot * FirstPersonLocalOffset;
+			_goalPos = basePos + offsetWorld;
+			return;
+		}
 
-		// Focus au-dessus du joueur
-		var focus = Target.WorldPosition + Vector3.Up * HeightOffset;
+		var fallbackPos = Target.WorldPosition + Vector3.Up * FallbackEyeHeight;
+		var fallbackOffset = _goalRot * FirstPersonLocalOffset;
+		_goalPos = fallbackPos + fallbackOffset;
+	}
 
-		// Position voulue (derrière)
+	private void UpdateThirdPersonGoals()
+	{
+		var focus = Target.WorldPosition + Vector3.Up * FocusHeightOffset;
+
 		var desiredPos = focus - _goalRot.Forward * Distance;
 
-		// Anti-clipping : trace focus -> desiredPos
-		_goalPos = ResolveThirdPersonCollision( focus, desiredPos );
+		if ( ShoulderOffset != 0f )
+			desiredPos += _goalRot.Right * ShoulderOffset;
+
+		var toCam = desiredPos - focus;
+		var len = toCam.Length;
+		if ( len < MinCameraDistanceToFocus )
+			desiredPos = focus + toCam.Normal * MinCameraDistanceToFocus;
+
+		var resolved = ResolveThirdPersonCollision( focus, desiredPos );
+
+		if ( DebugThirdPersonCamera )
+			DrawThirdPersonDebug( focus, desiredPos, resolved );
+
+		_goalPos = resolved;
 	}
 
 	private Vector3 ResolveThirdPersonCollision( Vector3 focus, Vector3 desiredPos )
 	{
-		// Si la trace n'a pas de sens (distance nulle)
 		if ( (desiredPos - focus).LengthSquared < 0.001f )
 			return desiredPos;
 
@@ -191,25 +264,76 @@ public sealed class MyCustomControllerCamera : Component
 		if ( !tr.Hit )
 			return desiredPos;
 
-		// Se placer juste avant le mur
 		return tr.EndPosition + tr.Normal * CameraTracePadding;
 	}
 
-	// --------- Utils angles (degrés) ---------
+	private void DrawThirdPersonDebug( Vector3 focus, Vector3 desiredPos, Vector3 resolvedPos )
+	{
+		float dur = DebugDrawSeconds;
+
+		DebugOverlay.Sphere( new Sphere( focus, 2.5f ), Color.Green, dur );
+		DebugOverlay.Sphere( new Sphere( resolvedPos, 2.0f ), Color.Red, dur );
+		DebugOverlay.Sphere( new Sphere( desiredPos, 3.0f ), Color.Yellow, dur );
+
+		var tr = Scene.Trace
+			.Ray( focus, desiredPos )
+			.Radius( CameraTraceRadius )
+			.IgnoreGameObject( Target )
+			.IgnoreGameObject( GameObject )
+			.Run();
+
+		DebugOverlay.Trace( tr, dur );
+		if ( tr.Hit )
+			DebugOverlay.Normal( tr.EndPosition, tr.Normal * 12f, Color.Cyan, dur );
+
+		var parentName = GameObject.Parent != null ? GameObject.Parent.Name : "<null>";
+
+		DebugOverlay.ScreenText(
+			new Vector2( 40, 40 ),
+			$"[TP Cam Debug] parent={parentName} hit={tr.Hit} shoulder={ShoulderOffset:F1} mode={Mode}",
+			16f, TextFlag.LeftTop, Color.White, 0f
+		);
+	}
+
+	private void RecenterFromCurrentCameraRotation()
+	{
+		var a = WorldRotation.Angles();
+		_pitchDeg = a.pitch;
+		_yawDeg = NormalizeDeg( a.yaw );
+		_goalRot = Rotation.From( new Angles( _pitchDeg, _yawDeg, 0f ) );
+	}
+
+	private static GameObject TryFindFirstPersonAnchor( GameObject root )
+	{
+		if ( root == null ) return null;
+
+		return FindChildByNameRecursive( root, "Eyes" )
+			?? FindChildByNameRecursive( root, "Eye" )
+			?? FindChildByNameRecursive( root, "Head" )
+			?? FindChildByNameRecursive( root, "Camera" );
+	}
+
+	private static GameObject FindChildByNameRecursive( GameObject root, string name )
+	{
+		if ( root == null ) return null;
+
+		if ( root.Name.Equals( name, System.StringComparison.OrdinalIgnoreCase ) )
+			return root;
+
+		foreach ( var child in root.Children )
+		{
+			var found = FindChildByNameRecursive( child, name );
+			if ( found != null ) return found;
+		}
+
+		return null;
+	}
 
 	private static float NormalizeDeg( float a )
 	{
 		a %= 360f;
 		if ( a < 0f ) a += 360f;
 		return a;
-	}
-
-	private static float ShortestAngleDeg( float a, float b )
-	{
-		float diff = NormalizeDeg( a ) - NormalizeDeg( b );
-		if ( diff > 180f ) diff -= 360f;
-		if ( diff < -180f ) diff += 360f;
-		return diff;
 	}
 
 	private static float GetYawDeg( Vector3 forward )
