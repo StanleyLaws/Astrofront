@@ -151,8 +151,11 @@ public sealed class CitizenAnimDriver : Component
 
 		var vel = Controller != null ? Controller.Velocity : velFromPos;
 
-		var fwd = GameObject.WorldRotation.Forward.WithZ( 0f ).Normal;
-		var rightAxis = (fwd.Cross( Vector3.Up )).Normal;
+		// Projeter le mouvement sur la rotation du visuel (comme CitizenAnimationHelper le fait avec Target.WorldRotation)
+		var basisRot = GetYawSourceRotation();
+		var fwd = basisRot.Forward.WithZ( 0f ).Normal;
+		var rightAxis = basisRot.Right.WithZ( 0f ).Normal;
+
 
 		var velFlat = vel.WithZ( 0f );
 		float fwdSpd = velFlat.Dot( fwd );
@@ -175,30 +178,32 @@ public sealed class CitizenAnimDriver : Component
 		if ( hints.OverrideGrounded )
 			grounded = hints.Grounded;
 
-		// AIM
-		Vector3 aimDir;
+		// AIM : SetLookDirection attend une direction WORLD (comme CitizenAnimationHelper.WithLook)
+		Vector3 aimDirWorld;
+
 		if ( isLocalOwner && Camera != null && Camera.Enabled )
 		{
-			var camFwd = Camera.WorldRotation.Forward.Normal;
-			aimDir = AimInLocalSpace ? (GameObject.WorldRotation.Inverse * camFwd).Normal : camFwd;
+			aimDirWorld = Camera.WorldRotation.Forward.Normal;
 
-			if ( _timeSinceAimSent > 0.1f && _syncedAimDir.Distance( aimDir ) > 0.01f )
+			// Sync réseau en WORLD (robuste)
+			if ( _timeSinceAimSent > 0.1f && _syncedAimDir.Distance( aimDirWorld ) > 0.01f )
 			{
 				_timeSinceAimSent = 0;
-				RpcSyncAim( aimDir );
+				RpcSyncAim( aimDirWorld );
 			}
 		}
 		else
 		{
-			aimDir = _syncedAimDir;
+			aimDirWorld = _syncedAimDir;
 		}
+
 
 		// --------------------------------------------------------
 		// Apply params au(x) renderer(s)
 		// --------------------------------------------------------
 		ApplyAllParams( Body,
 			hints, duckVal, hasMoveInput, grounded,
-			aimDir,
+			aimDirWorld,
 			wish_x, wish_y, wish_speed, wish_direction,
 			move_x, move_y, move_spd, move_direction,
 			_smoothedYawSpeed,
@@ -206,7 +211,7 @@ public sealed class CitizenAnimDriver : Component
 
 		ApplyAllParams( Legs,
 			hints, duckVal, hasMoveInput, grounded,
-			aimDir,
+			aimDirWorld,
 			wish_x, wish_y, wish_speed, wish_direction,
 			move_x, move_y, move_spd, move_direction,
 			_smoothedYawSpeed,
@@ -242,13 +247,16 @@ public sealed class CitizenAnimDriver : Component
 		r.Set( "duck", duckVal );
 		r.Set( "b_ducking", duckVal > 0.5f );
 
-		// AIM
-		r.Set( "aim_body", aimDir );
-		r.Set( "aim_head", aimDir );
-		r.Set( "aim_eyes", aimDir );
+		// AIM (API officielle : SetLookDirection, comme CitizenAnimationHelper.WithLook)
+		r.SetLookDirection( "aim_body", aimDir, AimStrengthBody );
+		r.SetLookDirection( "aim_head", aimDir, AimStrengthHead );
+		r.SetLookDirection( "aim_eyes", aimDir, AimStrengthEyes );
+
+		// (optionnel) garder les weights en paramètres aussi, si ton graph les lit directement
 		r.Set( "aim_body_weight", AimStrengthBody );
 		r.Set( "aim_head_weight", AimStrengthHead );
 		r.Set( "aim_eyes_weight", AimStrengthEyes );
+
 
 		// Intentions / movement
 		r.Set( "wish_x", wish_x );
@@ -324,9 +332,10 @@ public sealed class CitizenAnimDriver : Component
 	private bool HasValidAnimGraph( SkinnedModelRenderer r )
 	{
 		if ( r == null ) return false;
-		if ( !r.UseAnimGraph ) return false;
-		return r.AnimationGraph != null;
+		if ( r.AnimationGraph == null ) return false;
+		return !r.AnimationGraph.IsError;
 	}
+
 
 	private Rotation GetYawSourceRotation()
 	{

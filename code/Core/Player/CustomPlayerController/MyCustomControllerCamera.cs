@@ -7,6 +7,11 @@ namespace Astrofront;
 /// - FirstPerson : anchor tête/yeux + rotation libre
 /// - IMPORTANT: ApplyTransform() est fait en OnPreRender() pour gagner contre les "post-moves"
 ///   (héritage de parent transform / autres scripts qui écrivent après OnUpdate).
+///
+/// TP Rear Arc (turn-in-place via caméra):
+/// - La caméra peut orbiter librement dans un cône arrière (±ThirdPersonRearArcHalfAngle autour du yaw du perso)
+/// - Si l'input souris dépasse l'arc, la caméra reste au bord de l'arc et l'excès est reporté sur OrientationRoot
+///   => turn-in-place garanti, indépendant de la vitesse de souris.
 public sealed class MyCustomControllerCamera : Component
 {
 	// --------------------
@@ -27,6 +32,14 @@ public sealed class MyCustomControllerCamera : Component
 	// --------------------
 	[Property, Group( "Refs" )] public GameObject Target { get; set; }              // joueur racine
 	[Property, Group( "Refs" )] public GameObject FirstPersonAnchor { get; set; }  // tête/yeux (optionnel)
+
+	/// Root à tourner en TP quand on dépasse l'arc (turn-in-place).
+	/// - Par défaut: Target
+	/// - Recommandé: le GO visuel (ex: "Body"/"Citizen"/"Visual") si tu ne veux pas tourner le root physique.
+	[Property, Group( "Refs" )] public GameObject OrientationRoot { get; set; }
+
+	/// ✅ Permissions FP/TP (pilotées par Rules via PlayerUiContext)
+	[Property, Group( "Refs" )] public PlayerUiContext UiContext { get; set; }
 
 	// --------------------
 	// Robust
@@ -58,6 +71,9 @@ public sealed class MyCustomControllerCamera : Component
 	[Property, Group( "ThirdPerson" )] public float ThirdPersonMinPitch { get; set; } = -89f;
 	[Property, Group( "ThirdPerson" )] public float ThirdPersonMaxPitch { get; set; } = 89f;
 
+	/// Arc arrière (demi-angle, degrés). 60 = cône serré, 90 = hémisphère arrière.
+	[Property, Group( "ThirdPerson" )] public float ThirdPersonRearArcHalfAngle { get; set; } = 60f;
+
 	[Property, Group( "ThirdPerson" )] public float MinCameraDistanceToFocus { get; set; } = 8f;
 
 	[Property, Group( "ThirdPerson" )] public float CameraTraceRadius { get; set; } = 4f;
@@ -78,12 +94,6 @@ public sealed class MyCustomControllerCamera : Component
 	[Property, Group( "FirstPerson" )] public bool AutoFindAnchorByName { get; set; } = true;
 
 	// --------------------
-	// Debug
-	// --------------------
-	[Property, Group( "Debug" )] public bool DebugThirdPersonCamera { get; set; } = false;
-	[Property, Group( "Debug" )] public float DebugDrawSeconds { get; set; } = 0f;
-
-	// --------------------
 	// Internal state
 	// --------------------
 	private float _yawDeg;
@@ -95,7 +105,6 @@ public sealed class MyCustomControllerCamera : Component
 
 	private Vector3 _lastAppliedPos;
 	private Rotation _lastAppliedRot;
-	private bool _hasLastApplied;
 
 	protected override void OnStart()
 	{
@@ -103,10 +112,15 @@ public sealed class MyCustomControllerCamera : Component
 		if ( _cam == null ) return;
 		if ( Target is null ) return;
 
+		OrientationRoot ??= Target;
+
 		if ( DetachFromParentOnStart && GameObject.Parent != null )
 		{
 			GameObject.SetParent( null, keepWorldPosition: true );
 		}
+
+		ResolveUiContext();
+		EnforceViewPermissions(); // ✅ applique les permissions dès le start
 
 		if ( FirstPersonAnchor == null && AutoFindAnchorByName )
 			FirstPersonAnchor = TryFindFirstPersonAnchor( Target );
@@ -125,7 +139,6 @@ public sealed class MyCustomControllerCamera : Component
 
 		_lastAppliedPos = WorldPosition;
 		_lastAppliedRot = WorldRotation;
-		_hasLastApplied = true;
 	}
 
 	protected override void OnUpdate()
@@ -136,24 +149,18 @@ public sealed class MyCustomControllerCamera : Component
 
 		if ( UiModalController.IsUiLockedLocal ) return;
 
-		if ( DebugThirdPersonCamera && _hasLastApplied )
-		{
-			var dp = (WorldPosition - _lastAppliedPos).Length;
-			var dy = Angles.NormalizeAngle( WorldRotation.Angles().yaw - _lastAppliedRot.Angles().yaw );
+		ResolveUiContext();
+		EnforceViewPermissions(); // ✅ force FP/TP selon rules
 
-			if ( dp > 0.25f || System.MathF.Abs( dy ) > 0.25f )
-			{
-				DebugOverlay.ScreenText(
-					new Vector2( 40, 80 ),
-					$"[Cam Debug] External move since last apply: dp={dp:F2} dyaw={dy:F2}",
-					16f, TextFlag.LeftTop, Color.Orange, 0f
-				);
-			}
-		}
+		bool canToggle = AllowToggle && CanToggleByRules();
 
-		if ( AllowToggle && !string.IsNullOrWhiteSpace( ToggleAction ) && Input.Pressed( ToggleAction ) )
+		if ( canToggle && !string.IsNullOrWhiteSpace( ToggleAction ) && Input.Pressed( ToggleAction ) )
 		{
 			Mode = (Mode == CameraMode.ThirdPerson) ? CameraMode.FirstPerson : CameraMode.ThirdPerson;
+
+			// si on a toggle vers une vue interdite (au cas où), on corrige
+			EnforceViewPermissions();
+
 			RecenterFromCurrentCameraRotation();
 
 			if ( Mode == CameraMode.FirstPerson && FirstPersonAnchor == null && AutoFindAnchorByName )
@@ -170,6 +177,12 @@ public sealed class MyCustomControllerCamera : Component
 			_pitchDeg = _pitchDeg.Clamp( ThirdPersonMinPitch, ThirdPersonMaxPitch );
 		else
 			_pitchDeg = _pitchDeg.Clamp( FirstPersonMinPitch, FirstPersonMaxPitch );
+
+		// ✅ TP : arc arrière + report du dépassement sur le perso (turn-in-place)
+		if ( Mode == CameraMode.ThirdPerson )
+		{
+			ApplyThirdPersonRearArcAndTurnInPlace();
+		}
 
 		_goalRot = Rotation.From( new Angles( _pitchDeg, _yawDeg, 0f ) );
 
@@ -189,7 +202,6 @@ public sealed class MyCustomControllerCamera : Component
 
 		_lastAppliedPos = WorldPosition;
 		_lastAppliedRot = WorldRotation;
-		_hasLastApplied = true;
 	}
 
 	private void ApplyTransform()
@@ -243,9 +255,6 @@ public sealed class MyCustomControllerCamera : Component
 
 		var resolved = ResolveThirdPersonCollision( focus, desiredPos );
 
-		if ( DebugThirdPersonCamera )
-			DrawThirdPersonDebug( focus, desiredPos, resolved );
-
 		_goalPos = resolved;
 	}
 
@@ -267,32 +276,92 @@ public sealed class MyCustomControllerCamera : Component
 		return tr.EndPosition + tr.Normal * CameraTracePadding;
 	}
 
-	private void DrawThirdPersonDebug( Vector3 focus, Vector3 desiredPos, Vector3 resolvedPos )
+	private void ApplyThirdPersonRearArcAndTurnInPlace()
 	{
-		float dur = DebugDrawSeconds;
+		var root = OrientationRoot ?? Target;
+		if ( root == null ) return;
 
-		DebugOverlay.Sphere( new Sphere( focus, 2.5f ), Color.Green, dur );
-		DebugOverlay.Sphere( new Sphere( resolvedPos, 2.0f ), Color.Red, dur );
-		DebugOverlay.Sphere( new Sphere( desiredPos, 3.0f ), Color.Yellow, dur );
+		float max = ThirdPersonRearArcHalfAngle.Clamp( 0f, 180f );
 
-		var tr = Scene.Trace
-			.Ray( focus, desiredPos )
-			.Radius( CameraTraceRadius )
-			.IgnoreGameObject( Target )
-			.IgnoreGameObject( GameObject )
-			.Run();
+		// Si max >= 180 : pas de limite
+		if ( max >= 179.999f )
+			return;
 
-		DebugOverlay.Trace( tr, dur );
-		if ( tr.Hit )
-			DebugOverlay.Normal( tr.EndPosition, tr.Normal * 12f, Color.Cyan, dur );
+		float bodyYaw = NormalizeDeg( root.WorldRotation.Angles().yaw );
+		float camYaw = NormalizeDeg( _yawDeg );
 
-		var parentName = GameObject.Parent != null ? GameObject.Parent.Name : "<null>";
+		float delta = Angles.NormalizeAngle( camYaw - bodyYaw );
 
-		DebugOverlay.ScreenText(
-			new Vector2( 40, 40 ),
-			$"[TP Cam Debug] parent={parentName} hit={tr.Hit} shoulder={ShoulderOffset:F1} mode={Mode}",
-			16f, TextFlag.LeftTop, Color.White, 0f
-		);
+		// Dans l'arc : rien à faire
+		if ( delta >= -max && delta <= max )
+			return;
+
+		// Dépassement : report sur le perso, caméra clampée au bord
+		if ( delta > max )
+		{
+			float overshoot = delta - max; // positif
+			bodyYaw = NormalizeDeg( bodyYaw + overshoot );
+			root.WorldRotation = Rotation.From( new Angles( 0f, bodyYaw, 0f ) );
+
+			_yawDeg = NormalizeDeg( bodyYaw + max );
+			return;
+		}
+
+		// delta < -max
+		{
+			float overshoot = delta + max; // négatif
+			bodyYaw = NormalizeDeg( bodyYaw + overshoot );
+			root.WorldRotation = Rotation.From( new Angles( 0f, bodyYaw, 0f ) );
+
+			_yawDeg = NormalizeDeg( bodyYaw - max );
+		}
+	}
+
+	// =========================================================
+	// ✅ Permissions FP/TP depuis PlayerUiContext
+	// =========================================================
+	private void ResolveUiContext()
+	{
+		if ( UiContext != null ) return;
+
+		// caméra peut être sous un GO "Camera", donc on check autour
+		UiContext =
+			Components.Get<PlayerUiContext>( FindMode.EverythingInSelfAndAncestors )
+			?? Components.Get<PlayerUiContext>( FindMode.EverythingInSelfAndDescendants );
+
+		// fallback via Target (si caméra pas dans la hiérarchie directe)
+		if ( UiContext == null && Target != null )
+		{
+			UiContext =
+				Target.Components.Get<PlayerUiContext>( FindMode.EverythingInSelfAndDescendants )
+				?? Target.Components.Get<PlayerUiContext>( FindMode.EverythingInSelfAndAncestors );
+		}
+	}
+
+	private bool CanToggleByRules()
+	{
+		// Sans context => rétro-compat, on bloque rien
+		if ( UiContext == null ) return true;
+
+		// toggle uniquement si les 2 vues sont autorisées
+		return UiContext.allowFirstPerson && UiContext.allowThirdPerson;
+	}
+
+	private void EnforceViewPermissions()
+	{
+		if ( UiContext == null ) return;
+
+		// Si FP interdit et on est en FP => forcer TP
+		if ( Mode == CameraMode.FirstPerson && !UiContext.allowFirstPerson )
+			Mode = CameraMode.ThirdPerson;
+
+		// Si TP interdit et on est en TP => forcer FP
+		if ( Mode == CameraMode.ThirdPerson && !UiContext.allowThirdPerson )
+			Mode = CameraMode.FirstPerson;
+
+		// Si les 2 sont faux, fallback safe
+		if ( !UiContext.allowFirstPerson && !UiContext.allowThirdPerson )
+			Mode = CameraMode.ThirdPerson;
 	}
 
 	private void RecenterFromCurrentCameraRotation()

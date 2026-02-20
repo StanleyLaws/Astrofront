@@ -33,6 +33,19 @@ public static class Astrofront_Citizen_Rules
 		dresser.Apply();
 
 		// -------------------------
+		// ORIENTATION ROOT (turn-in-place & yaw visuel)
+		// -------------------------
+		// On veut tourner le visuel, pas le root physique.
+		var controller = player.Components.Get<MyCustomController>( FindMode.EverythingInSelfAndDescendants );
+		if ( controller != null )
+			controller.OrientationRoot = body.GameObject;
+
+		// La caméra peut aussi avoir besoin de savoir quel GO tourner en TP.
+		var camBrain = player.Components.Get<MyCustomControllerCamera>( FindMode.EverythingInSelfAndDescendants );
+		if ( camBrain != null )
+			camBrain.OrientationRoot = body.GameObject;
+
+		// -------------------------
 		// CITIZEN ANIM DRIVER
 		// -------------------------
 		var anim = body.Components.Get<CitizenAnimDriver>( FindMode.EverythingInSelfAndDescendants );

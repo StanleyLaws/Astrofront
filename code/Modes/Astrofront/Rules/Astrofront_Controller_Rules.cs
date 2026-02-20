@@ -4,87 +4,109 @@ namespace Astrofront;
 
 public static class Astrofront_Controller_Rules
 {
-	/// Appliqué côté local (client) sur l'objet player.
-	/// Configure le controller custom + caméra custom + anim driver + dresser.
-	public static void ApplyLocal( GameObject player )
+	public static void ApplyHost( GameObject player )
 	{
 		if ( player == null ) return;
+		if ( !Networking.IsHost ) return;
 
-		// =========================
-		// INPUT (source)
-		// =========================
-		var input = player.Components.Get<PlayerMovementInput>( FindMode.EverythingInSelfAndDescendants );
-		if ( input == null )
+		// PlayerState (énergie autoritaire)
+		var ps = player.Components.Get<PlayerState>( FindMode.EverythingInSelfAndDescendants );
+		if ( ps != null )
 		{
-			Log.Warning( "[Astrofront_Controller_Rules] PlayerMovementInput introuvable." );
+			ps.SetMaxEnergyHost( 100 );
+			ps.SetEnergyHost( ps.MaxEnergy );
 		}
 		else
 		{
-			// Si tu veux des noms d'actions standardisés
-			input.SprintAction = "Run";     // assure-toi que l'action existe dans Input Actions
-			input.SlowWalkAction = "SlowWalk"; // idem
+			Log.Warning( "[Astrofront_Controller_Rules] PlayerState introuvable." );
 		}
 
-		// =========================
-		// CONTROLLER (motor + tuning)
-		// =========================
+		// EnergySystem (simulation autoritaire)
+		var energy = player.Components.Get<PlayerEnergySystem>( FindMode.EverythingInSelfAndDescendants );
+		if ( energy != null )
+		{
+			energy.SetEnergyEnabledHost( true );
+			energy.SetPassiveRegenHost( perSecond: 6f, regenWhileDraining: false );
+			energy.SetMinEnergyHost( 0 );
+			energy.ClearDrainHost( "sprint" );
+		}
+		else
+		{
+			Log.Warning( "[Astrofront_Controller_Rules] PlayerEnergySystem introuvable." );
+		}
+
+		// Controller (tuning gameplay autoritaire)
 		var ctrl = player.Components.Get<MyCustomController>( FindMode.EverythingInSelfAndDescendants );
 		if ( ctrl == null )
 		{
-			Log.Warning( "[Astrofront_Controller_Rules] MyCustomController introuvable." );
+			Log.Warning( "[Astrofront_Controller_Rules] MyCustomController introuvable (HOST)." );
 			return;
 		}
 
-		// Speeds Astrofront
 		ctrl.WalkSpeed = 220f;
 		ctrl.SprintSpeed = 320f;
 		ctrl.SlowWalkSpeed = 120f;
 
-		// Physique / feeling
 		ctrl.Gravity = 900f;
 		ctrl.Acceleration = 10f;
 		ctrl.GroundFriction = 6f;
 		ctrl.StopSpeed = 120f;
 
-		// Jump
 		ctrl.JumpSpeed = 360f;
 		ctrl.CoyoteTime = 0.12f;
 		ctrl.JumpBuffer = 0.12f;
 
-		// Capsule
 		ctrl.StandRadius = 16f;
 		ctrl.StandHeight = 72f;
 		ctrl.StepHeight = 18f;
 
-		// Duck
 		ctrl.DuckInSpeed = 12f;
 		ctrl.DuckOutSpeed = 40f;
 		ctrl.DuckRadiusScale = 0.80f;
 		ctrl.DuckHeightScale = 0.60f;
 		ctrl.DuckSpeedMultiplier = 0.55f;
 
-		// Orientation (évite le "courir de côté")
 		ctrl.AlignToCameraYaw = true;
 		ctrl.FirstPersonAlwaysAlignYaw = true;
 		ctrl.ThirdPersonFacing = MyCustomController.ThirdPersonFacingMode.CameraYaw;
 		ctrl.AlignRotateSpeed = 12f;
 
-		// Motor par défaut Astrofront : WALK
+		// Sprint energy (⚠ int)
+		ctrl.SprintUsesEnergy = true;
+		ctrl.SprintEnergyDrainPerSecond = 15;
+		ctrl.MinEnergyToStartSprint = 1;
+		ctrl.SprintDrainMinSpeed = 20f;
+
+		// Jump energy (⚠ int)
+		ctrl.JumpUsesEnergy = true;
+		ctrl.JumpEnergyCost = 8;
+		ctrl.MinEnergyToJump = 8;
+		ctrl.JumpDetectedMinDeltaVelZ = 80f;
+
 		ctrl.UseWalkMotor();
 
-		// ✅ TEST FLY (décommenter temporairement pour valider l’archi)
-		// ctrl.SetMotor( new FlyMotor() );
+		Log.Info( "[Astrofront_Controller_Rules] Applied HOST controller rules." );
+	}
 
-		// =========================
-		// CAMERA (custom)
-		// =========================
-		// Ici tu peux appliquer tes réglages caméra si ton MyCustomControllerCamera expose les props.
-		// (Je ne modifie pas ton script caméra ici pour ne pas casser.)
-		var camBrain = player.Components.Get<MyCustomControllerCamera>( FindMode.EverythingInSelfAndDescendants );
-		if ( camBrain == null )
+	public static void ApplyLocal( GameObject player )
+	{
+		if ( player == null ) return;
+
+		// INPUT bindings (local)
+		var input = player.Components.Get<PlayerMovementInput>( FindMode.EverythingInSelfAndDescendants );
+		if ( input != null )
 		{
-			// Pas bloquant
-			// Log.Warning( "[Astrofront_Controller_Rules] MyCustomControllerCamera introuvable." );
-		} 
+			input.SprintAction = "Run";
+			input.SlowWalkAction = "SlowWalk";
+		}
+
+		// Cam tuning local éventuel
+		var camBrain = player.Components.Get<MyCustomControllerCamera>( FindMode.EverythingInSelfAndDescendants );
+		if ( camBrain != null )
+		{
+			// rien par défaut
+		}
+
+		Log.Info( "[Astrofront_Controller_Rules] Applied LOCAL controller rules." );
 	}
 }

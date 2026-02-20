@@ -9,6 +9,10 @@ public sealed class MyCustomController : Component
 	[Property, Group("Refs")] public CharacterController CharacterController { get; set; }
 	[Property, Group("Refs")] public PlayerMovementInput MovementInput { get; set; }
 
+	// Energy stack
+	[Property, Group("Refs")] public PlayerEnergySystem Energy { get; set; } // Core
+	[Property, Group("Refs")] public PlayerState State { get; set; } // Core (Energy/MaxEnergy)
+
 	/// ✅ NOUVEAU: le GameObject qui reçoit la rotation yaw (visuel).
 	/// IMPORTANT: le root physique (capsule + caméra) ne devrait pas tourner si la caméra est enfant.
 	/// - Par défaut = GameObject (rétro-compat)
@@ -78,10 +82,27 @@ public sealed class MyCustomController : Component
 	[Property, Group("Speed")] public float Gravity { get; set; } = 900f;
 	[Property, Group("Speed")] public float Acceleration { get; set; } = 10f;
 
+	// ---------------- Sprint / Energy ----------------
+	[Property, Group("SprintEnergy")] public bool SprintUsesEnergy { get; set; } = true;
+	[Property, Group("SprintEnergy")] public float SprintEnergyDrainPerSecond { get; set; } = 12f;
+	[Property, Group("SprintEnergy")] public int MinEnergyToStartSprint { get; set; } = 1;
+	[Property, Group("SprintEnergy")] public string SprintDrainId { get; set; } = "sprint";
+
+	// ✅ Ne draine que si on bouge réellement (évite "shift" immobile)
+	[Property, Group("SprintEnergy")] public float SprintDrainMinSpeed { get; set; } = 20f;
+
 	// ---------------- Jump tuning ----------------
 	[Property, Group("Jump")] public float JumpSpeed { get; set; } = 360f;
 	[Property, Group("Jump")] public float CoyoteTime { get; set; } = 0.12f;
 	[Property, Group("Jump")] public float JumpBuffer { get; set; } = 0.12f;
+
+	// ---------------- Jump / Energy ----------------
+	[Property, Group("JumpEnergy")] public bool JumpUsesEnergy { get; set; } = true;
+	[Property, Group("JumpEnergy")] public int JumpEnergyCost { get; set; } = 8;
+	[Property, Group("JumpEnergy")] public int MinEnergyToJump { get; set; } = 8;
+
+	// Seuil de détection "saut réel" (delta de vitesse Z avant/après Step)
+	[Property, Group("JumpEnergy")] public float JumpDetectedMinDeltaVelZ { get; set; } = 80f;
 
 	// ---------------- Duck ----------------
 	[Property, Group("Duck")] public float DuckInSpeed { get; set; } = 12f;
@@ -96,6 +117,9 @@ public sealed class MyCustomController : Component
 	private bool _wasMovingLastFrame = false;
 	private float _moveYawLockDeg = 0f;
 
+	// Sprint drain state (évite spam RPC)
+	private bool _sprintDrainActive = false;
+
 	public bool IsGrounded => CharacterController?.IsOnGround ?? false;
 	public Vector3 Velocity => CharacterController?.Velocity ?? default;
 	public float Radius => CharacterController?.Radius ?? StandRadius;
@@ -108,7 +132,6 @@ public sealed class MyCustomController : Component
 	// --------------------
 	private GameObject GetOrientationRoot()
 	{
-		// Fallback propre
 		return OrientationRoot ?? GameObject;
 	}
 
@@ -126,8 +149,10 @@ public sealed class MyCustomController : Component
 	{
 		EnsureRefs();
 
-		// ✅ default: si non assigné, on reste rétro-compat (root tourne)
 		OrientationRoot ??= GameObject;
+
+		if ( MinEnergyToJump <= 0 )
+			MinEnergyToJump = JumpEnergyCost;
 
 		if ( CharacterController == null )
 		{
@@ -146,20 +171,22 @@ public sealed class MyCustomController : Component
 			if ( !TrySetMotorByIdInternal( DefaultMotorId, activateNow: true ) )
 			{
 				_motor = new WalkMotor();
-				_motor.OnActivated( BuildContext( jumpPressedLatched:false ) );
+				_motor.OnActivated( BuildContext( jumpPressedLatched: false ) );
 				Log.Warning( $"[MyCustomController] DefaultMotorId '{DefaultMotorId}' not found. Fallback WalkMotor()." );
 			}
 		}
 		else
 		{
-			_motor.OnActivated( BuildContext( jumpPressedLatched:false ) );
+			_motor.OnActivated( BuildContext( jumpPressedLatched: false ) );
 		}
 
 		RebuildAnimHints();
 
-		// init yaw lock (sur OrientationRoot)
 		_wasMovingLastFrame = false;
 		_moveYawLockDeg = GetOrientationRotation().Angles().yaw;
+
+		// On reset le drain sprint au spawn
+		SetSprintDrainLocal( false );
 	}
 
 	protected override void OnUpdate()
@@ -170,6 +197,9 @@ public sealed class MyCustomController : Component
 
 		// Orientation en Update => fluide
 		UpdateOrientation();
+
+		// Sprint -> Energy drain (owner -> host)
+		UpdateSprintEnergyDrainLocal();
 	}
 
 	protected override void OnFixedUpdate()
@@ -187,7 +217,27 @@ public sealed class MyCustomController : Component
 
 		bool jumpPressed = MovementInput.CanGameplayInput && MovementInput.JumpPressedLatched;
 
+		// -------------------------------------------------
+		// ✅ Gate jump par énergie (avant de donner au motor)
+		// -------------------------------------------------
+		if ( jumpPressed && JumpUsesEnergy && Energy != null && State != null && State.MaxEnergy > 0 )
+		{
+			int need = (MinEnergyToJump > 0) ? MinEnergyToJump : JumpEnergyCost;
+
+			if ( State.Energy < need )
+			{
+				// Pas assez d'énergie => on bloque ce jump
+				jumpPressed = false;
+
+				// Important: on consomme le latch sinon tu "buffer" un jump gratuitement
+				MovementInput.ConsumeJumpPressedLatch();
+			}
+		}
+
 		var ctx = BuildContext( jumpPressed );
+
+		// Snapshot vitesse Z avant Step pour détecter un "vrai saut"
+		float preVelZ = CharacterController.Velocity.z;
 
 		var hints = MovementMotorAnimHints.Default;
 		_motor.GetAnimHints( ref hints );
@@ -200,6 +250,21 @@ public sealed class MyCustomController : Component
 
 		_motor.Step( ctx );
 
+		// -------------------------------------------------
+		// ✅ Si saut réel => coût instantané d'énergie
+		// -------------------------------------------------
+		if ( JumpUsesEnergy && Energy != null && State != null && State.MaxEnergy > 0 )
+		{
+			float postVelZ = CharacterController.Velocity.z;
+			bool jumpedForReal = (postVelZ - preVelZ) > JumpDetectedMinDeltaVelZ;
+
+			if ( jumpedForReal && JumpEnergyCost > 0 )
+			{
+				Energy.AddInstantLocal( -JumpEnergyCost, "jump" );
+			}
+		}
+
+		// Consume latch si pas déjà consommé au-dessus
 		MovementInput.ConsumeJumpPressedLatch();
 	}
 
@@ -208,7 +273,12 @@ public sealed class MyCustomController : Component
 		CharacterController ??= Components.Get<CharacterController>( FindMode.InSelf );
 		MovementInput ??= Components.Get<PlayerMovementInput>( FindMode.EverythingInSelfAndAncestors );
 
-		// OrientationRoot: si non assigné, on garde GameObject
+		Energy ??= Components.Get<PlayerEnergySystem>( FindMode.EverythingInSelfAndAncestors )
+			?? Components.Get<PlayerEnergySystem>( FindMode.EverythingInSelfAndDescendants );
+
+		State ??= Components.Get<PlayerState>( FindMode.EverythingInSelfAndAncestors )
+			?? Components.Get<PlayerState>( FindMode.EverythingInSelfAndDescendants );
+
 		OrientationRoot ??= GameObject;
 	}
 
@@ -257,6 +327,63 @@ public sealed class MyCustomController : Component
 	}
 
 	// =========================================================
+	// Sprint -> Energy drain (owner local)
+	// =========================================================
+
+	private void UpdateSprintEnergyDrainLocal()
+	{
+		if ( MovementInput == null ) { SetSprintDrainLocal( false ); return; }
+		if ( !MovementInput.CanGameplayInput ) { SetSprintDrainLocal( false ); return; }
+
+		bool wantsSprint = MovementInput.SprintHeld;
+
+		// ✅ Ne draine pas si pas d'intention de mouvement
+		bool hasMoveInput = MovementInput.MoveAxis.LengthSquared > 0.0001f;
+
+		// ✅ Ne draine pas si on ne se déplace pas réellement
+		bool isActuallyMoving = false;
+		if ( CharacterController != null )
+		{
+			var v = CharacterController.Velocity.WithZ( 0f );
+			isActuallyMoving = v.Length > SprintDrainMinSpeed;
+		}
+
+		bool shouldDrainBecauseSprint = wantsSprint && hasMoveInput && isActuallyMoving;
+
+		if ( !SprintUsesEnergy || Energy == null || State == null )
+		{
+			SetSprintDrainLocal( false );
+			return;
+		}
+
+		// Si le mode a désactivé l'énergie (MaxEnergy=0 etc.), on ne draine pas
+		if ( State.MaxEnergy <= 0 )
+		{
+			SetSprintDrainLocal( false );
+			return;
+		}
+
+		// Gate: si énergie trop basse, on refuse sprint
+		bool allowSprint = State.Energy >= MinEnergyToStartSprint;
+
+		SetSprintDrainLocal( shouldDrainBecauseSprint && allowSprint );
+	}
+
+	private void SetSprintDrainLocal( bool active )
+	{
+		if ( Energy == null ) return;
+
+		// évite spam RPC
+		if ( _sprintDrainActive == active )
+			return;
+
+		_sprintDrainActive = active;
+
+		float rate = active ? MathF.Max( 0f, SprintEnergyDrainPerSecond ) : 0f;
+		Energy.SetDrainLocal( SprintDrainId, rate );
+	}
+
+	// =========================================================
 	// Motor API (registry-friendly)
 	// =========================================================
 
@@ -284,7 +411,7 @@ public sealed class MyCustomController : Component
 			return;
 		}
 
-		var ctx = BuildContext( jumpPressedLatched:false );
+		var ctx = BuildContext( jumpPressedLatched: false );
 
 		_motor?.OnDeactivated( ctx );
 
@@ -310,7 +437,7 @@ public sealed class MyCustomController : Component
 			return true;
 		}
 
-		var ctx = BuildContext( jumpPressedLatched:false );
+		var ctx = BuildContext( jumpPressedLatched: false );
 
 		_motor?.OnDeactivated( ctx );
 
@@ -465,10 +592,18 @@ public sealed class MyCustomController : Component
 	{
 		var moveAxis = MovementInput?.MoveAxis ?? Vector2.Zero;
 
-		bool duckHeld   = MovementInput?.DuckHeld ?? false;
-		bool jumpHeld   = MovementInput?.JumpHeld ?? false;
-		bool slowHeld   = MovementInput?.SlowWalkHeld ?? false;
+		bool duckHeld = MovementInput?.DuckHeld ?? false;
+		bool jumpHeld = MovementInput?.JumpHeld ?? false;
+		bool slowHeld = MovementInput?.SlowWalkHeld ?? false;
+
+		// Sprint: on peut le refuser si énergie trop basse
 		bool sprintHeld = MovementInput?.SprintHeld ?? false;
+
+		if ( SprintUsesEnergy && State != null && State.MaxEnergy > 0 )
+		{
+			if ( State.Energy < MinEnergyToStartSprint )
+				sprintHeld = false;
+		}
 
 		float baseSpeed = WalkSpeed;
 		if ( slowHeld ) baseSpeed = SlowWalkSpeed;

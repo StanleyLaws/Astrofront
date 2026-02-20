@@ -8,7 +8,7 @@ namespace Astrofront;
 /// - Détruit l'ancien held item quand on change de slot
 /// - L'instance held est local-only (NetworkMode.Never)
 /// - Pour l'instant: le "held world model" n'est jamais visible (TP ni FP)
-/// 
+///
 /// NOTE: La visibilité du corps joueur en FP est gérée par LocalFirstPersonBodyVisibility.
 /// </summary>
 [Group( "Astrofront" )]
@@ -34,41 +34,128 @@ public sealed class HeldItemPresenter : Component
 	private GameObject _heldInstance;
 	private int _lastSelected = -999;
 
+	private bool _warnedMissingInv;
+
 	protected override void OnStart()
 	{
-		_inv = Components.Get<InventoryComponent>( FindMode.EverythingInSelfAndDescendants );
-		if ( _inv == null )
+		AttachPoint ??= GameObject;
+
+		if ( !TryBindInventory() )
 		{
-			if ( DebugLogs ) Log.Warning( "[HeldItem] No InventoryComponent found on player." );
-			return;
+			// Certains setups ajoutent/configurent des comps après spawn => retry quelques frames.
+			RetryBindInventory();
 		}
-
-		_inv.SelectionChanged += OnSelectionChanged;
-
-		// Équipe l'item courant au start
-		OnSelectionChanged( _inv.SelectedIndex );
 	}
 
 	protected override void OnDestroy()
 	{
-		if ( _inv != null )
-			_inv.SelectionChanged -= OnSelectionChanged;
-
-		// Safe destroy
+		UnbindInventory();
 		ClearHeldSafe();
 	}
 
 	protected override void OnUpdate()
 	{
-		// Robustesse: s'assure que le held reste invisible même si un autre script réactive un renderer.
+		// Si jamais l'inventory apparaît plus tard (ou a été recréé), on rebind.
+		if ( _inv == null )
+		{
+			TryBindInventory();
+		}
+
 		ApplyHeldVisibilityAlways();
 	}
 
 	protected override void OnPreRender()
 	{
-		// Dernier writer avant rendu
 		ApplyHeldVisibilityAlways();
 	}
+
+	// =========================================================
+	// Inventory binding
+	// =========================================================
+
+	private void UnbindInventory()
+	{
+		if ( _inv != null )
+			_inv.SelectionChanged -= OnSelectionChanged;
+
+		_inv = null;
+	}
+
+	private bool TryBindInventory()
+	{
+		if ( _inv != null )
+			return true;
+
+		// 1) Essai direct (au cas où c'est sur le même GO / parent / enfant)
+		_inv = Components.Get<InventoryComponent>( FindMode.EverythingInSelfAndAncestors )
+			?? Components.Get<InventoryComponent>( FindMode.EverythingInSelfAndDescendants );
+
+		// 2) Cas courant chez toi: Inventory est sur un GO sibling (Core) => chercher depuis le ROOT du player.
+		_inv ??= FindOnPrefabRoot<InventoryComponent>();
+
+		if ( _inv == null )
+		{
+			if ( DebugLogs && !_warnedMissingInv )
+			{
+				_warnedMissingInv = true;
+				Log.Warning( "[HeldItem] No InventoryComponent found on player (searched self/ancestors/descendants + prefab root descendants)." );
+			}
+
+			return false;
+		}
+
+		_warnedMissingInv = false;
+
+		_inv.SelectionChanged += OnSelectionChanged;
+
+		// Équipe l'item courant au bind
+		OnSelectionChanged( _inv.SelectedIndex );
+
+		if ( DebugLogs )
+			Log.Info( "[HeldItem] Bound to InventoryComponent." );
+
+		return true;
+	}
+
+	private async void RetryBindInventory()
+	{
+		// Try for a short time without spamming.
+		for ( int i = 0; i < 30; i++ ) // ~30 frames
+		{
+			if ( !IsValid ) return;
+
+			if ( TryBindInventory() )
+				return;
+
+			await Task.Yield();
+		}
+
+		// Toujours pas trouvé: on laisse le warning déjà log.
+	}
+
+	private T FindOnPrefabRoot<T>() where T : Component
+	{
+		var root = GetPrefabRoot();
+		if ( root == null ) return null;
+
+		return root.Components.Get<T>( FindMode.EverythingInSelfAndDescendants );
+	}
+
+	private GameObject GetPrefabRoot()
+	{
+		var go = GameObject;
+		if ( go == null ) return null;
+
+		// Remonte tout en haut de la hiérarchie (root du prefab en runtime)
+		while ( go.Parent.IsValid() )
+			go = go.Parent;
+
+		return go;
+	}
+
+	// =========================================================
+	// Inventory events
+	// =========================================================
 
 	private void OnSelectionChanged( int idx )
 	{
@@ -105,6 +192,10 @@ public sealed class HeldItemPresenter : Component
 
 		SpawnHeldFromRegistry( itemId );
 	}
+
+	// =========================================================
+	// Held spawning
+	// =========================================================
 
 	private void SpawnHeldFromRegistry( string itemId )
 	{
@@ -166,10 +257,8 @@ public sealed class HeldItemPresenter : Component
 		var toDestroy = _heldInstance;
 		_heldInstance = null;
 
-		// 1) Désactive immédiatement pour stopper les updates/dirty
 		toDestroy.Enabled = false;
 
-		// 2) Détruit fin de frame (évite OnDirty/attachments sur objet déjà "cassé")
 		DestroyEndOfFrame( toDestroy );
 
 		async void DestroyEndOfFrame( GameObject go )

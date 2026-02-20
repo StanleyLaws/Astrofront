@@ -1,6 +1,7 @@
 using Sandbox;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Astrofront;
 
@@ -24,7 +25,6 @@ public sealed class PlayerEnergySystem : Component
 	/// </summary>
 	[Sync( SyncFlags.FromHost )]
 	public bool EnergyEnabled { get; private set; } = true;
-
 
 	/// <summary>
 	/// Régénération passive (énergie par seconde) quand rien n'empêche la regen.
@@ -59,18 +59,31 @@ public sealed class PlayerEnergySystem : Component
 	// Accumulateur float pour convertir proprement en int (évite de perdre les petits dt)
 	private float _accum;
 
+	private bool _warnedMissingPlayerState;
+
 	protected override void OnStart()
 	{
-		_ps = Components.Get<PlayerState>( FindMode.EverythingInSelfAndDescendants );
-		if ( _ps == null )
-			Log.Warning( "[PlayerEnergySystem] PlayerState introuvable : le système ne peut pas écrire l'énergie." );
+		if ( !TryResolvePlayerState() )
+		{
+			RetryResolvePlayerState();
+		}
 	}
 
 	protected override void OnFixedUpdate()
 	{
+		if ( Networking.IsHost )
+		Log.Info( $"[Energy] HostTick GO={GameObject.Name} NetNull={(Network==null)} drains={_drains.Count} enabled={EnergyEnabled} max={_ps?.MaxEnergy}" );
+
+		
 		// Seul le host modifie la valeur d'énergie sync
 		if ( !Networking.IsHost ) return;
-		if ( _ps == null ) return;
+
+		// Si le PlayerState arrive plus tard (ou a été recréé), on retente.
+		if ( _ps == null )
+		{
+			if ( !TryResolvePlayerState() )
+				return;
+		}
 
 		// Désactivation automatique si le mode ne veut pas d'énergie
 		if ( !EnergyEnabled || _ps.MaxEnergy <= 0 )
@@ -107,14 +120,8 @@ public sealed class PlayerEnergySystem : Component
 		// Accumuler puis convertir en int par "ticks"
 		_accum += delta;
 
-		// Appliquer autant d'unités entières que possible
-		int intDelta = (int)_accum;
-
-		// Pour les valeurs négatives : (int) -0.2f == 0, donc on gère le floor
-		if ( _accum < 0f )
-			intDelta = (int)MathF.Floor( _accum );
-		else
-			intDelta = (int)MathF.Floor( _accum );
+		// Appliquer autant d'unités entières que possible (floor, y compris négatif)
+		int intDelta = (int)MathF.Floor( _accum );
 
 		if ( intDelta == 0 )
 			return;
@@ -127,6 +134,69 @@ public sealed class PlayerEnergySystem : Component
 		// Clamp min/max (PlayerState clamp déjà sur MaxEnergy, mais on assure MinEnergy)
 		if ( _ps.Energy < MinEnergy )
 			_ps.SetEnergyHost( MinEnergy );
+	}
+
+	// =========================================================
+	// Resolve helpers
+	// =========================================================
+
+	private bool TryResolvePlayerState()
+	{
+		if ( _ps != null )
+			return true;
+
+		// 1) local (self tree)
+		_ps = Components.Get<PlayerState>( FindMode.EverythingInSelfAndAncestors )
+			?? Components.Get<PlayerState>( FindMode.EverythingInSelfAndDescendants );
+
+		// 2) sibling-safe: chercher depuis le root du prefab/player
+		_ps ??= FindOnPrefabRoot<PlayerState>();
+
+		if ( _ps == null )
+		{
+			if ( !_warnedMissingPlayerState )
+			{
+				_warnedMissingPlayerState = true;
+				Log.Warning( "[PlayerEnergySystem] PlayerState introuvable : le système ne peut pas écrire l'énergie (searched self/ancestors/descendants + prefab root descendants)." );
+			}
+
+			return false;
+		}
+
+		_warnedMissingPlayerState = false;
+		return true;
+	}
+
+	private async void RetryResolvePlayerState()
+	{
+		for ( int i = 0; i < 30; i++ ) // ~30 frames
+		{
+			if ( !IsValid ) return;
+
+			if ( TryResolvePlayerState() )
+				return;
+
+			await Task.Yield();
+		}
+	}
+
+	private T FindOnPrefabRoot<T>() where T : Component
+	{
+		var root = GetPrefabRoot();
+		if ( root == null ) return null;
+
+		return root.Components.Get<T>( FindMode.EverythingInSelfAndDescendants );
+	}
+
+	private GameObject GetPrefabRoot()
+	{
+		var go = GameObject;
+		if ( go == null ) return null;
+
+		while ( go.Parent.IsValid() )
+			go = go.Parent;
+
+		return go;
 	}
 
 	// =========================================================
@@ -149,7 +219,6 @@ public sealed class PlayerEnergySystem : Component
 			_accum = 0f;
 		}
 	}
-
 
 	/// <summary>
 	/// Configure la regen passive (HOST only).
@@ -177,7 +246,10 @@ public sealed class PlayerEnergySystem : Component
 	public void AddInstantHost( int amount, string reason = "" )
 	{
 		if ( !Networking.IsHost ) return;
-		if ( _ps == null ) return;
+
+		if ( _ps == null && !TryResolvePlayerState() )
+			return;
+
 		if ( !Enabled || _ps.MaxEnergy <= 0 ) return;
 
 		_ps.AddEnergyHost( amount );
@@ -200,7 +272,12 @@ public sealed class PlayerEnergySystem : Component
 			_drains.Remove( id );
 		else
 			_drains[id] = ratePerSecond;
+		
+		Log.Info( $"[Energy] SetDrainLocal id={id} rate={ratePerSecond} IsProxy={IsProxy} NetworkNull={(Network==null)} GO={GameObject.Name}" );
+
 	}
+	
+	
 
 	/// <summary>
 	/// Supprime un drain (HOST only).
@@ -225,8 +302,6 @@ public sealed class PlayerEnergySystem : Component
 	// =========================================================
 	// API CLIENT -> HOST (pour les intentions locales)
 	// =========================================================
-	// But : un système local (ex: sprint) peut demander au host d'activer un drain.
-	// Le host reste la vérité : il applique la valeur réelle dans PlayerState.
 
 	/// <summary>
 	/// Côté owner/local : demande au host de set un drain.
@@ -234,9 +309,12 @@ public sealed class PlayerEnergySystem : Component
 	/// </summary>
 	public void SetDrainLocal( string id, float ratePerSecond )
 	{
+		Log.Info( $"[Energy] SetDrainLocal id={id} rate={ratePerSecond} IsProxy={IsProxy} Owner={(Network?.Owner)} Local={(Connection.Local)} GO={GameObject.Name}" );
+
 		if ( IsProxy ) return;
 		SetDrainHostRpc( id, ratePerSecond );
 	}
+
 
 	/// <summary>
 	/// Côté owner/local : demande au host d'ajouter un coût instantané.
@@ -250,8 +328,10 @@ public sealed class PlayerEnergySystem : Component
 	[Rpc.Host]
 	private void SetDrainHostRpc( string id, float ratePerSecond )
 	{
+		Log.Info( $"[Energy] HostRPC SetDrain id={id} rate={ratePerSecond} GO={GameObject.Name}" );
 		SetDrainHost( id, ratePerSecond );
 	}
+
 
 	[Rpc.Host]
 	private void AddInstantHostRpc( int amount, string reason )

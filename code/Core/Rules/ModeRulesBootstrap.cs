@@ -58,12 +58,10 @@ public sealed class ModeRulesBootstrap : Component
 		switch ( Mode )
 		{
 			case ModeId.Lobby:
-				// Lobby: si tu veux des motors spécifiques lobby plus tard, tu les mets ici.
-				Log.Info( "[ModeRulesBootstrap] Mode=LObby registries initialized." );
+				Log.Info( "[ModeRulesBootstrap] Mode=Lobby registries initialized." );
 				break;
 
 			case ModeId.Astrofront:
-				// Astrofront: register des motors spécifiques au mode
 				MovementMotorRegistry.Register( "astrofront_fly", () => new FlyMotor() );
 				Log.Info( "[ModeRulesBootstrap] Mode=Astrofront registries initialized: astrofront_fly" );
 				break;
@@ -90,11 +88,19 @@ public sealed class ModeRulesBootstrap : Component
 			switch ( Mode )
 			{
 				case ModeId.Lobby:
+					// UI/permissions/systèmes globaux
 					Lobby_Rules.ApplyHost( player );
+
+					// ✅ Autoritaire: tuning controller + energy gameplay (anti-cheat)
+					Lobby_Controller_Rules.ApplyHost( player );
 					break;
 
 				case ModeId.Astrofront:
+					// UI/permissions/systèmes globaux
 					Astrofront_Rules.ApplyHost( player );
+
+					// ✅ Autoritaire: tuning controller + energy gameplay (anti-cheat)
+					Astrofront_Controller_Rules.ApplyHost( player );
 					break;
 			}
 		}
